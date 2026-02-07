@@ -12,25 +12,29 @@ export function FaviconUpdater() {
 
     useEffect(() => {
         if (settings?.logo_url) {
-            let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
-            if (!link) {
-                link = document.createElement('link');
-                link.rel = 'icon';
-                document.head.appendChild(link);
-            }
-            link.href = settings.logo_url;
+            const updateFavicon = () => {
+                let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+                if (!link) {
+                    link = document.createElement('link');
+                    link.rel = 'icon';
+                    document.head.appendChild(link);
+                }
 
-            // Adjust type based on extension
-            if (settings.logo_url.endsWith('.svg')) {
-                link.type = 'image/svg+xml';
-            } else if (settings.logo_url.endsWith('.png')) {
-                link.type = 'image/png';
-            } else if (settings.logo_url.endsWith('.jpg') || settings.logo_url.endsWith('.jpeg')) {
-                link.type = 'image/jpeg';
-            } else {
-                // Default or let browser infer
-                link.removeAttribute('type');
-            }
+                link.href = settings.logo_url;
+
+                // Adjust type based on extension
+                if (settings.logo_url.endsWith('.svg')) {
+                    link.type = 'image/svg+xml';
+                } else if (settings.logo_url.endsWith('.png')) {
+                    link.type = 'image/png';
+                } else if (settings.logo_url.endsWith('.jpg') || settings.logo_url.endsWith('.jpeg')) {
+                    link.type = 'image/jpeg';
+                } else {
+                    link.removeAttribute('type');
+                }
+            };
+
+            updateFavicon();
         }
     }, [settings]);
 
