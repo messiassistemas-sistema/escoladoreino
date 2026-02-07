@@ -67,9 +67,31 @@ export const settingsService = {
 
     async updateSettings(settings: Partial<SystemSettings>): Promise<SystemSettings> {
         // We update the single record. For now, we assume there's only one.
-        const { data: current } = await supabase.from("system_settings").select("id").single();
+        const { data: current } = await supabase.from("system_settings").select("id").maybeSingle();
 
-        if (!current) throw new Error("Nenhum registro de configuração encontrado.");
+        if (!current) {
+            // Se não existir, criamos o primeiro registro
+            const { data, error } = await supabase
+                .from("system_settings")
+                .insert({
+                    ...settings,
+                    school_name: settings.school_name || "Escola do Reino", // Default values
+                    min_grade: settings.min_grade || 7,
+                    min_attendance: settings.min_attendance || 75,
+                    enrollment_value: settings.enrollment_value || 100,
+                    max_installments: settings.max_installments || 12,
+                    updated_at: new Date().toISOString(),
+                })
+                .select()
+                .single();
+
+            if (error) {
+                console.error("Erro ao criar configurações:", error);
+                throw error;
+            }
+
+            return data as SystemSettings;
+        }
 
         const { data, error } = await supabase
             .from("system_settings")
