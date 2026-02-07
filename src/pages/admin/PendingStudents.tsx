@@ -1,0 +1,271 @@
+import { useState } from "react";
+import { motion } from "framer-motion";
+import {
+    Search,
+    MoreHorizontal,
+    Edit,
+    Trash2,
+    Eye,
+    Mail,
+    CheckCircle,
+    UserCheck,
+} from "lucide-react";
+import { AdminLayout } from "@/components/admin/AdminLayout";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { studentsService, Student } from "@/services/studentsService";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+
+export default function PendingStudents() {
+    const { toast } = useToast();
+    const queryClient = useQueryClient();
+    const [searchTerm, setSearchTerm] = useState("");
+
+    // Details Dialog State
+    const [detailsStudent, setDetailsStudent] = useState<Student | null>(null);
+    const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
+    const { data: alunos = [], isLoading } = useQuery({
+        queryKey: ["students"],
+        queryFn: studentsService.getStudents,
+    });
+
+    const updateMutation = useMutation({
+        mutationFn: ({ id, data }: { id: string; data: Partial<Student> }) =>
+            studentsService.updateStudent(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["students"] });
+            toast({ title: "Aluno aprovado com sucesso!" });
+        },
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: studentsService.deleteStudent,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["students"] });
+            toast({ title: "Solicitação recusada e excluída com sucesso!" });
+        },
+    });
+
+    // Filter only PENDING students
+    const pendingStudents = alunos.filter((aluno) => {
+        const isPending = aluno.status === "pendente";
+        const matchesSearch =
+            aluno.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (aluno.email && aluno.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (aluno.registration_number && aluno.registration_number.includes(searchTerm));
+        return isPending && matchesSearch;
+    });
+
+    const handleApprove = (student: Student) => {
+        if (window.confirm(`Deseja aprovar a matrícula de ${student.name}?`)) {
+            updateMutation.mutate({ id: student.id, data: { status: 'ativo' } });
+        }
+    };
+
+    return (
+        <AdminLayout title="Matrículas Pendentes" description="Analise e aprove novas solicitações de matrícula">
+            <div className="space-y-6">
+                {/* Intro / Stats */}
+                <div className="grid gap-4 md:grid-cols-1">
+                    <Card className="bg-orange-50 border-orange-100 shadow-sm">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-orange-800 flex items-center gap-2">
+                                <UserCheck className="h-5 w-5" />
+                                Aprovação Necessária
+                            </CardTitle>
+                            <CardDescription className="text-orange-700/80">
+                                Estes alunos realizaram o cadastro mas aguardam sua confirmação para acessar a plataforma.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-3xl font-bold text-orange-900">
+                                {pendingStudents.length} <span className="text-base font-normal text-orange-700/60">solicitações pendentes</span>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Filters */}
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-1 gap-4">
+                        <div className="relative flex-1 sm:max-w-md">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                placeholder="Buscar por nome, email..."
+                                className="pl-10 bg-background"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Table */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                >
+                    <Card className="shadow-soft">
+                        <CardContent className="p-0">
+                            {pendingStudents.length === 0 ? (
+                                <div className="p-12 text-center text-muted-foreground">
+                                    <CheckCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground/20" />
+                                    <p className="text-lg font-medium">Nenhuma matrícula pendente</p>
+                                    <p className="text-sm">Tudo certo! Não há novos alunos aguardando aprovação.</p>
+                                </div>
+                            ) : (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Aluno</TableHead>
+                                            <TableHead>Contato</TableHead>
+                                            <TableHead>Turma Solicitada</TableHead>
+                                            <TableHead>Data Cadastro</TableHead>
+                                            <TableHead className="text-right">Ações</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {pendingStudents.map((aluno) => (
+                                            <TableRow key={aluno.id}>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 font-display font-semibold text-orange-700">
+                                                            {aluno.name?.charAt(0) || "A"}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-medium">{aluno.name}</p>
+                                                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">
+                                                                #{aluno.registration_number || "NOVO"}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex flex-col text-sm">
+                                                        <span>{aluno.email}</span>
+                                                        <span className="text-muted-foreground">{aluno.phone || "—"}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant="outline">{aluno.class_name || "Não definida"}</Badge>
+                                                </TableCell>
+                                                <TableCell className="text-muted-foreground text-sm">
+                                                    Hoje {/* Todo: Add created_at to Student interface if needed */}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <Button
+                                                            size="sm"
+                                                            className="bg-green-600 hover:bg-green-700 text-white gap-2"
+                                                            onClick={() => handleApprove(aluno)}
+                                                        >
+                                                            <CheckCircle className="h-4 w-4" />
+                                                            Aprovar
+                                                        </Button>
+
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" size="icon">
+                                                                    <MoreHorizontal className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuItem className="gap-2" onClick={() => {
+                                                                    setDetailsStudent(aluno);
+                                                                    setIsDetailsOpen(true);
+                                                                }}>
+                                                                    <Eye className="h-4 w-4" />
+                                                                    Ver Detalhes
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem
+                                                                    className="gap-2 text-destructive focus:text-destructive"
+                                                                    onClick={() => {
+                                                                        if (window.confirm(`Tem certeza que deseja recusar e remover ${aluno.name}?`)) {
+                                                                            deleteMutation.mutate(aluno.id);
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                    Recusar / Excluir
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            )}
+                        </CardContent>
+                    </Card>
+                </motion.div>
+
+                {/* Student Details Dialog (Simplified for Review) */}
+                <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+                    <DialogContent className="max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Detalhes da Solicitação</DialogTitle>
+                        </DialogHeader>
+                        {detailsStudent && (
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <Label className="text-xs text-muted-foreground">Nome</Label>
+                                        <p className="font-medium">{detailsStudent.name}</p>
+                                    </div>
+                                    <div>
+                                        <Label className="text-xs text-muted-foreground">Status</Label>
+                                        <Badge variant="secondary" className="bg-orange-100 text-orange-700">Pendente</Badge>
+                                    </div>
+                                </div>
+                                <div>
+                                    <Label className="text-xs text-muted-foreground">E-mail</Label>
+                                    <p className="font-medium">{detailsStudent.email}</p>
+                                </div>
+                                <div>
+                                    <Label className="text-xs text-muted-foreground">Telefone</Label>
+                                    <p className="font-medium">{detailsStudent.phone || "—"}</p>
+                                </div>
+                            </div>
+                        )}
+                        <DialogFooter>
+                            <Button variant="ghost" onClick={() => setIsDetailsOpen(false)}>Fechar</Button>
+                            {detailsStudent && (
+                                <Button
+                                    className="bg-green-600 hover:bg-green-700"
+                                    onClick={() => {
+                                        handleApprove(detailsStudent);
+                                        setIsDetailsOpen(false);
+                                    }}
+                                >
+                                    Aprovar Matrícula
+                                </Button>
+                            )}
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
+        </AdminLayout>
+    );
+}

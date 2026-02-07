@@ -1,0 +1,223 @@
+@import "@fontsource/playfair-display/400.css";
+@import "@fontsource/playfair-display/500.css";
+@import "@fontsource/playfair-display/600.css";
+@import "@fontsource/playfair-display/700.css";
+@import "@fontsource/inter/300.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Escola do Reino - Design System
+   Theological school with elegant, spiritual aesthetic
+   Blues (wisdom/depth) + Gold (illumination/warmth)
+*/
+
+@layer base {
+  :root {
+    /* Core backgrounds */
+    --background: 40 33% 98%;
+    --foreground: 215 50% 15%;
+
+    /* Cards & surfaces */
+    --card: 0 0% 100%;
+    --card-foreground: 215 50% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 50% 15%;
+
+    /* Primary: Deep royal blue */
+    --primary: 215 60% 25%;
+    --primary-foreground: 40 33% 98%;
+
+    /* Secondary: Warm gold */
+    --secondary: 40 70% 50%;
+    --secondary-foreground: 215 50% 15%;
+
+    /* Muted surfaces */
+    --muted: 40 20% 94%;
+    --muted-foreground: 215 25% 45%;
+
+    /* Accent: Soft gold glow */
+    --accent: 40 60% 92%;
+    --accent-foreground: 215 50% 15%;
+
+    /* Feedback colors */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 70% 35%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 215 50% 15%;
+
+    /* UI elements */
+    --border: 40 20% 88%;
+    --input: 40 20% 88%;
+    --ring: 215 60% 35%;
+
+    --radius: 0.625rem;
+
+    /* Sidebar */
+    --sidebar-background: 215 55% 20%;
+    --sidebar-foreground: 40 33% 95%;
+    --sidebar-primary: 40 70% 55%;
+    --sidebar-primary-foreground: 215 50% 15%;
+    --sidebar-accent: 215 45% 28%;
+    --sidebar-accent-foreground: 40 33% 95%;
+    --sidebar-border: 215 40% 30%;
+    --sidebar-ring: 40 70% 55%;
+
+    /* Custom gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(215 60% 22%) 0%, hsl(215 55% 32%) 50%, hsl(220 50% 38%) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(40 70% 50%) 0%, hsl(35 75% 55%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(40 25% 97%) 100%);
+
+    /* Shadows */
+    --shadow-soft: 0 4px 20px -4px hsl(215 50% 15% / 0.08);
+    --shadow-card: 0 8px 30px -8px hsl(215 50% 15% / 0.12);
+    --shadow-elevated: 0 20px 50px -15px hsl(215 50% 15% / 0.18);
+    --shadow-gold: 0 8px 30px -8px hsl(40 70% 50% / 0.25);
+  }
+
+  .dark {
+    --background: 215 55% 8%;
+    --foreground: 40 20% 98%;
+    /* Quase branco puro para máximo contraste */
+
+    --card: 215 50% 12%;
+    --card-foreground: 40 20% 98%;
+
+    --popover: 215 50% 10%;
+    --popover-foreground: 40 20% 98%;
+
+    /* Primary: Gold for high contrast buttons in dark mode */
+    --primary: 40 85% 60%;
+    --primary-foreground: 215 55% 8%;
+
+    /* Secondary: Light blueish for readable accents */
+    --secondary: 215 40% 65%;
+    --secondary-foreground: 215 55% 8%;
+
+    --muted: 215 40% 18%;
+    --muted-foreground: 215 20% 75%;
+    /* Mais claro que o anterior */
+
+    --accent: 215 40% 22%;
+    --accent-foreground: 40 20% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 70% 50%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 90% 60%;
+    --warning-foreground: 215 55% 8%;
+
+    --border: 215 35% 22%;
+    --input: 215 35% 22%;
+    --ring: 40 85% 60%;
+
+    --sidebar-background: 215 55% 6%;
+    --sidebar-foreground: 40 20% 90%;
+    --sidebar-primary: 40 85% 60%;
+    --sidebar-primary-foreground: 215 55% 8%;
+    --sidebar-accent: 215 45% 15%;
+    --sidebar-accent-foreground: 40 20% 90%;
+    --sidebar-border: 215 40% 18%;
+    --sidebar-ring: 40 85% 60%;
+
+    --gradient-hero: linear-gradient(135deg, hsl(215 55% 6%) 0%, hsl(215 50% 12%) 50%, hsl(220 45% 18%) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(40 85% 55%) 0%, hsl(35 80% 60%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(215 50% 12%) 0%, hsl(215 48% 10%) 100%);
+
+    --shadow-soft: 0 4px 20px -4px hsl(0 0% 0% / 0.5);
+    --shadow-card: 0 8px 30px -8px hsl(0 0% 0% / 0.6);
+    --shadow-elevated: 0 20px 50px -15px hsl(0 0% 0% / 0.7);
+    --shadow-gold: 0 8px 30px -8px hsl(40 85% 55% / 0.3);
+  }
+
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: "Inter", system-ui, sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: "Playfair Display", Georgia, serif;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: "Playfair Display", Georgia, serif;
+  }
+
+  .font-body {
+    font-family: "Inter", system-ui, sans-serif;
+  }
+
+  .bg-gradient-hero {
+    background: var(--gradient-hero);
+  }
+
+  .bg-gradient-gold {
+    background: var(--gradient-gold);
+  }
+
+  .bg-gradient-card {
+    background: var(--gradient-card);
+  }
+
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .shadow-gold {
+    box-shadow: var(--shadow-gold);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-muted-foreground/20;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/40;
+  }
+}
