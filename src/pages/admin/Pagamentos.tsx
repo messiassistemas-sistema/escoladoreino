@@ -10,12 +10,16 @@ import {
   Clock,
   ExternalLink,
   MoreHorizontal,
+  Trash2,
+  Eye,
+  Edit,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,6 +52,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function AdminPagamentos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
+  const [selectedPayments, setSelectedPayments] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -78,6 +83,39 @@ export default function AdminPagamentos() {
   };
 
 
+
+  const toggleSelectAll = () => {
+    if (selectedPayments.size === filteredPagamentos.length) {
+      setSelectedPayments(new Set());
+    } else {
+      setSelectedPayments(new Set(filteredPagamentos.map(p => p.id)));
+    }
+  };
+
+  const toggleSelectPayment = (id: string) => {
+    const newSelected = new Set(selectedPayments);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedPayments(newSelected);
+  };
+
+  const deleteMutation = paymentsService.deletePayment; // we will use this directly in onClick for simplicity or wrap in useMutation if preferred. 
+  // Actually typically recommended to useMutation but for brevity I will call service directly in handler
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Deseja excluir ${selectedPayments.size} pagamentos?`)) return;
+    try {
+      await paymentsService.deletePayments(Array.from(selectedPayments));
+      toast({ title: "Pagamentos excluídos!", description: "Os registros foram removidos com sucesso." });
+      queryClient.invalidateQueries({ queryKey: ["payments"] });
+      setSelectedPayments(new Set());
+    } catch (error) {
+      toast({ title: "Erro", description: "Falha ao excluir pagamentos.", variant: "destructive" });
+    }
+  };
   return (
     <AdminLayout title="Pagamentos" description="Gestão financeira e pagamentos">
       <div className="space-y-6">
@@ -149,6 +187,22 @@ export default function AdminPagamentos() {
           </Button>
         </div>
 
+        {/* Bulk Actions Bar */}
+        {selectedPayments.size > 0 && (
+          <div className="bg-muted/50 p-2 rounded-lg flex items-center justify-between px-4 animate-in fade-in slide-in-from-top-2">
+            <span className="text-sm font-medium">{selectedPayments.size} selecionado(s)</span>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="gap-2"
+              onClick={handleBulkDelete}
+            >
+              <Trash2 className="h-4 w-4" />
+              Excluir Selecionados
+            </Button>
+          </div>
+        )}
+
         {/* Table */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -159,6 +213,13 @@ export default function AdminPagamentos() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[50px]">
+                      <Checkbox
+                        checked={filteredPagamentos.length > 0 && selectedPayments.size === filteredPagamentos.length}
+                        onCheckedChange={toggleSelectAll}
+                        aria-label="Select all"
+                      />
+                    </TableHead>
                     <TableHead>ID</TableHead>
                     <TableHead>Aluno</TableHead>
                     <TableHead>Turma</TableHead>
@@ -182,7 +243,14 @@ export default function AdminPagamentos() {
                       </TableCell>
                     </TableRow>
                   ) : filteredPagamentos.map((pag) => (
-                    <TableRow key={pag.id}>
+                    <TableRow key={pag.id} data-state={selectedPayments.has(pag.id) ? "selected" : undefined}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedPayments.has(pag.id)}
+                          onCheckedChange={() => toggleSelectPayment(pag.id)}
+                          aria-label={`Select payment ${pag.id}`}
+                        />
+                      </TableCell>
                       <TableCell className="font-mono text-sm">
                         {pag.id.substring(0, 8)}
                       </TableCell>

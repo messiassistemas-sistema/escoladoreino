@@ -48,7 +48,7 @@ export function UsersManagement() {
     });
 
     const createMutation = useMutation({
-        mutationFn: settingsService.createUser,
+        mutationFn: (data: any) => settingsService.createUser(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["admin-users"] });
             setIsOpen(false);

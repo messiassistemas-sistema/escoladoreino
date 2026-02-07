@@ -323,6 +323,7 @@ export default function AdminConfiguracoes() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="mercadopago">Mercado Pago</SelectItem>
+                        <SelectItem value="asaas">Asaas</SelectItem>
                         <SelectItem value="stripe">Stripe</SelectItem>
                         <SelectItem value="pagarme">Pagar.me</SelectItem>
                       </SelectContent>
@@ -344,7 +345,7 @@ export default function AdminConfiguracoes() {
                       </Button>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Token de acesso do Mercado Pago (ambiente produção).
+                      Chave de API do provedor selecionado (Mercado Pago ou Asaas).
                     </p>
                   </div>
 

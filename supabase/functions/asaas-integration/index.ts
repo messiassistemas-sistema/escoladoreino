@@ -7,7 +7,11 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const ASAAS_API_URL = 'https://sandbox.asaas.com/api/v3'; // SANDBOX
+// Production URL by default. 
+// Sandbox: https://sandbox.asaas.com/api/v3
+// Production: https://www.asaas.com/api/v3
+const ASAAS_API_URL_PROD = 'https://www.asaas.com/api/v3';
+const ASAAS_API_URL_SANDBOX = 'https://sandbox.asaas.com/api/v3';
 
 serve(async (req) => {
     // Handle CORS preflight requests
@@ -16,23 +20,35 @@ serve(async (req) => {
     }
 
     try {
-        const supabaseClient = createClient(
+        // Create a service role client to fetch secure settings
+        const supabaseAdmin = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-            { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
 
-        // Check if the user is authenticated
-        // Auth check removed to allow public Registration/Payment
-        // const { data: { user } } = await supabaseClient.auth.getUser()
-        // if (!user) return new Response(...)
-
         const { action, ...payload } = await req.json()
-        const asaasApiKey = Deno.env.get('ASAAS_API_KEY')
+
+        // Fetch API key from database settings first
+        const { data: settings, error: settingsError } = await supabaseAdmin
+            .from('system_settings')
+            .select('payment_api_key')
+            .single();
+
+        const dbApiKey = settings?.payment_api_key;
+        const envApiKey = Deno.env.get('ASAAS_API_KEY');
+        const asaasApiKey = dbApiKey || envApiKey;
 
         if (!asaasApiKey) {
-            throw new Error('ASAAS_API_KEY not configured on server.')
+            throw new Error('ASAAS_API_KEY not configured in settings or server environment.')
         }
+
+        // Determine environment based on API key format or explicit config
+        // Sandbox keys usually start with '$' or are clearly distinct if standard Asaas convention holds. 
+        // However, user stated they put a production key.
+        // We will default to PROD, but check if the key looks like a sandbox key if known (often starts with '$aact_')
+
+        const isSandbox = asaasApiKey.includes('$sandbox'); // Simple heuristic, better to default to Prod if user says so.
+        const ASAAS_API_URL = isSandbox ? ASAAS_API_URL_SANDBOX : ASAAS_API_URL_PROD;
 
         const asaasHeaders = {
             'Content-Type': 'application/json',

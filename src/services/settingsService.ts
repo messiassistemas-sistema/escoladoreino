@@ -89,48 +89,7 @@ export const settingsService = {
         return data as SystemSettings;
     },
 
-    // User Management Methods
-    async getUsers(): Promise<UserProfile[]> {
-        const { data, error } = await supabase
-            .from("profiles")
-            .select("*")
-            .neq('role', 'student') // Exclude students from admin management list if desired
-            .order("full_name");
 
-        if (error) {
-            console.error("Erro ao buscar usuários:", error);
-            throw error;
-        }
-        return data as UserProfile[];
-    },
-
-    async createUser(user: { email: string; fullName: string; role: string }): Promise<void> {
-        // Generate a random temp password
-        const tempPassword = Math.random().toString(36).slice(-8) + "A1!";
-
-        const { data, error } = await supabase.functions.invoke("create-admin-user", {
-            body: { ...user, password: tempPassword }
-        });
-
-        if (error) throw new Error(`Erro na função: ${error.message}`);
-        if (data?.error) throw new Error(data.error);
-
-        // Optionally send email with credentials
-        await this.sendEmail(
-            user.email,
-            "Acesso ao Sistema - Escola do Reino",
-            `
-                <h1>Bem-vindo(a) à Equipe!</h1>
-                <p>Olá ${user.fullName},</p>
-                <p>Sua conta de acesso foi criada com sucesso.</p>
-                <p><strong>Cargo:</strong> ${user.role.toUpperCase()}</p>
-                <p><strong>E-mail:</strong> ${user.email}</p>
-                <p><strong>Senha Temporária:</strong> ${tempPassword}</p>
-                <br/>
-                <p>Acesse o sistema e troque sua senha assim que possível.</p>
-            `
-        );
-    },
 
     // User Management Methods
     async getUsers(): Promise<UserProfile[]> {

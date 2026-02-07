@@ -21,9 +21,10 @@ serve(async (req) => {
         const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
 
         if (userError || !user) {
+            console.error("Auth error:", userError);
             return new Response(
-                JSON.stringify({ error: 'Unauthorized' }),
-                { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                JSON.stringify({ success: false, error: `Unauthorized: ${userError?.message || 'User not found'}` }),
+                { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
         }
 
@@ -31,8 +32,8 @@ serve(async (req) => {
 
         if (!email || !password || !fullName || !role) {
             return new Response(
-                JSON.stringify({ error: 'Missing required fields' }),
-                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                JSON.stringify({ success: false, error: 'Missing required fields' }),
+                { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
         }
 
@@ -72,20 +73,18 @@ serve(async (req) => {
             })
 
         if (profileError) {
-            // If profile creation fails, we might want to delete the user? 
-            // For now, just throw error.
             console.error("Profile creation error:", profileError);
             throw profileError;
         }
 
         return new Response(
-            JSON.stringify({ message: 'User created successfully', user: newUser.user }),
+            JSON.stringify({ success: true, message: 'User created successfully', user: newUser.user }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
-    } catch (error) {
+    } catch (error: any) {
         return new Response(
-            JSON.stringify({ error: error.message }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            JSON.stringify({ success: false, error: error.message || 'An error occurred' }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
     }
 })

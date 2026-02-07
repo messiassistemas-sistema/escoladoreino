@@ -84,5 +84,23 @@ export const paymentsService = {
             console.error("Error activating student:", studentError);
             throw studentError;
         }
+    },
+
+    async deletePayment(id: string): Promise<void> {
+        const { error } = await supabase
+            .from("payments")
+            .delete()
+            .eq("id", id);
+
+        if (error) throw error;
+    },
+
+    async deletePayments(ids: string[]): Promise<void> {
+        const { error } = await supabase
+            .from("payments")
+            .delete()
+            .in("id", ids);
+
+        if (error) throw error;
     }
 };

@@ -11,6 +11,7 @@ import {
   Filter,
   CheckCircle,
   Ban,
+  MessageCircle,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -460,6 +461,20 @@ export default function AdminAlunos() {
                           Copiar
                         </Button>
                       </div>
+
+                      <Button
+                        className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white gap-2"
+                        onClick={() => {
+                          const message = `Olá *${detailsStudent.name}*! 👋\n\nAqui estão seus dados de acesso ao Portal do Aluno da Escola do Reino:\n\n📧 *Login:* ${detailsStudent.email}\n🔑 *Senha:* ${generatedPassword}\n\n🔗 *Acesse em:* ${window.location.origin}/login\n\nQualquer dúvida, estamos à disposição!`;
+                          const whatsappUrl = `https://wa.me/55${detailsStudent.phone?.replace(/\D/g, "")}?text=${encodeURIComponent(message)}`;
+                          window.open(whatsappUrl, '_blank');
+                        }}
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                        Enviar Login e Senha no WhatsApp
+                      </Button>
+
+
                       <p className="text-xs text-muted-foreground bg-yellow-500/10 p-2 rounded text-yellow-600 border border-yellow-500/20">
                         ⚠️ Envie esta senha para o aluno. Ela não será mostrada novamente.
                       </p>

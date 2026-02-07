@@ -113,7 +113,7 @@ export default function Matricula() {
       // 3. Create Payment 
       const payment = await asaasService.createPayment({
         customer: customer.id,
-        billingType: 'PIX',
+        billingType: 'UNDEFINED',
         value: currentPrice,
         dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         description: `Matrícula: ${selectedCourseData?.title || "Curso Geral"}`,
@@ -280,6 +280,8 @@ export default function Matricula() {
                   </p>
                 </div>
 
+                {/* Payment Method Selector removed to allow choice at checkout */}
+
                 <div className="rounded-lg bg-muted/50 p-4">
                   <div className="flex items-start gap-3">
                     <Checkbox
@@ -338,9 +340,9 @@ export default function Matricula() {
               </Link>
             </motion.p>
           </div>
-        </div>
-      </main>
+        </div >
+      </main >
       <Footer />
-    </div>
+    </div >
   );
 }
