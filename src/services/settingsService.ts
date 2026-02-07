@@ -55,11 +55,47 @@ export const settingsService = {
         const { data, error } = await supabase
             .from("system_settings")
             .select("*")
-            .single();
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
         if (error) {
             console.error("Erro ao buscar configurações:", error);
             throw error;
+        }
+
+        // Return defaults if no data found
+        if (!data) {
+            return {
+                id: "",
+                school_name: "Escola do Reino",
+                cnpj: null,
+                school_description: null,
+                contact_email: "contato@escoladoreino.com.br",
+                contact_phone: "(11) 99999-9999",
+                address: "Rua da Esperança, 123, Centro, Cidade - UF",
+                min_grade: 7,
+                min_attendance: 75,
+                payment_provider: "mercadopago",
+                payment_api_key: null,
+                enrollment_value: 100,
+                max_installments: 12,
+                cash_discount: false,
+                email_notif: true,
+                portal_notif: true,
+                lesson_reminder: true,
+                grade_notif: true,
+                admin_2fa: false,
+                qr_validity: 15,
+                audit_logs: true,
+                smtp_host: null,
+                smtp_port: 587,
+                smtp_user: null,
+                smtp_pass: null,
+                sender_name: null,
+                logo_url: null,
+                updated_at: new Date().toISOString()
+            } as SystemSettings;
         }
 
         return data as SystemSettings;
@@ -67,7 +103,7 @@ export const settingsService = {
 
     async updateSettings(settings: Partial<SystemSettings>): Promise<SystemSettings> {
         // We update the single record. For now, we assume there's only one.
-        const { data: current } = await supabase.from("system_settings").select("id").maybeSingle();
+        const { data: current } = await supabase.from("system_settings").select("id").limit(1).maybeSingle();
 
         if (!current) {
             // Se não existir, criamos o primeiro registro
