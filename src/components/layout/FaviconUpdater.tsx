@@ -12,11 +12,25 @@ export function FaviconUpdater() {
 
     useEffect(() => {
         if (settings?.logo_url) {
-            const link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']") || document.createElement('link');
-            link.type = 'image/x-icon';
-            link.rel = 'shortcut icon';
+            let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+            if (!link) {
+                link = document.createElement('link');
+                link.rel = 'icon';
+                document.head.appendChild(link);
+            }
             link.href = settings.logo_url;
-            document.getElementsByTagName('head')[0].appendChild(link);
+
+            // Adjust type based on extension
+            if (settings.logo_url.endsWith('.svg')) {
+                link.type = 'image/svg+xml';
+            } else if (settings.logo_url.endsWith('.png')) {
+                link.type = 'image/png';
+            } else if (settings.logo_url.endsWith('.jpg') || settings.logo_url.endsWith('.jpeg')) {
+                link.type = 'image/jpeg';
+            } else {
+                // Default or let browser infer
+                link.removeAttribute('type');
+            }
         }
     }, [settings]);
 
