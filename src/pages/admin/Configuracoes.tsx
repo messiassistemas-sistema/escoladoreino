@@ -31,6 +31,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { settingsService, SystemSettings } from "@/services/settingsService";
 import { useEffect, useCallback } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/contexts/AuthContext";
 
 
 
@@ -38,6 +39,7 @@ export default function AdminConfiguracoes() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState<Partial<SystemSettings>>({});
+  const { isAdmin } = useAuth(); // Get admin status
 
   const { data: settings, isLoading: isFetching } = useQuery({
     queryKey: ["system-settings"],
@@ -131,10 +133,12 @@ export default function AdminConfiguracoes() {
               <School className="h-4 w-4" />
               <span className="hidden sm:inline">Escola</span>
             </TabsTrigger>
-            <TabsTrigger value="pagamentos" className="gap-2">
-              <CreditCard className="h-4 w-4" />
-              <span className="hidden sm:inline">Pagamentos</span>
-            </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="pagamentos" className="gap-2">
+                <CreditCard className="h-4 w-4" />
+                <span className="hidden sm:inline">Pagamentos</span>
+              </TabsTrigger>
+            )}
             <TabsTrigger value="notificacoes" className="gap-2">
               <Bell className="h-4 w-4" />
               <span className="hidden sm:inline">Notificações</span>
@@ -143,10 +147,12 @@ export default function AdminConfiguracoes() {
               <Shield className="h-4 w-4" />
               <span className="hidden sm:inline">Segurança</span>
             </TabsTrigger>
-            <TabsTrigger value="email" className="gap-2">
-              <Mail className="h-4 w-4" />
-              <span className="hidden sm:inline">E-mail</span>
-            </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="email" className="gap-2">
+                <Mail className="h-4 w-4" />
+                <span className="hidden sm:inline">E-mail</span>
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* Escola */}
@@ -299,94 +305,96 @@ export default function AdminConfiguracoes() {
           </TabsContent>
 
           {/* Pagamentos */}
-          <TabsContent value="pagamentos">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <Card className="shadow-soft">
-                <CardHeader>
-                  <CardTitle className="font-display">Configurações de Pagamento</CardTitle>
-                  <CardDescription>
-                    Configure a integração com o provedor de pagamentos.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-2">
-                    <Label>Provedor de Pagamento</Label>
-                    <Select
-                      value={formData.payment_provider || "mercadopago"}
-                      onValueChange={(value) => handleChange("payment_provider", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="mercadopago">Mercado Pago</SelectItem>
-                        <SelectItem value="asaas">Asaas</SelectItem>
-                        <SelectItem value="stripe">Stripe</SelectItem>
-                        <SelectItem value="pagarme">Pagar.me</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="payment_api_key">Access Token</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="payment_api_key"
-                        type="password"
-                        placeholder="••••••••••••••••"
-                        value={formData.payment_api_key || ""}
-                        onChange={(e) => handleChange("payment_api_key", e.target.value)}
-                      />
-                      <Button variant="outline" size="icon">
-                        <Key className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Chave de API do provedor selecionado (Mercado Pago ou Asaas).
-                    </p>
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-2">
+          {isAdmin && (
+            <TabsContent value="pagamentos">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <Card className="shadow-soft">
+                  <CardHeader>
+                    <CardTitle className="font-display">Configurações de Pagamento</CardTitle>
+                    <CardDescription>
+                      Configure a integração com o provedor de pagamentos.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
                     <div className="space-y-2">
-                      <Label htmlFor="enrollment_value">Valor da Matrícula (R$)</Label>
-                      <Input
-                        id="enrollment_value"
-                        type="number"
-                        value={formData.enrollment_value || ""}
-                        onChange={(e) => handleChange("enrollment_value", Number(e.target.value))}
-                      />
+                      <Label>Provedor de Pagamento</Label>
+                      <Select
+                        value={formData.payment_provider || "mercadopago"}
+                        onValueChange={(value) => handleChange("payment_provider", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="mercadopago">Mercado Pago</SelectItem>
+                          <SelectItem value="asaas">Asaas</SelectItem>
+                          <SelectItem value="stripe">Stripe</SelectItem>
+                          <SelectItem value="pagarme">Pagar.me</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="max_installments">Máximo de Parcelas</Label>
-                      <Input
-                        id="max_installments"
-                        type="number"
-                        value={formData.max_installments || ""}
-                        onChange={(e) => handleChange("max_installments", Number(e.target.value))}
-                      />
-                    </div>
-                  </div>
 
-                  <div className="flex items-center justify-between rounded-lg border border-border p-4">
-                    <div>
-                      <Label>Pagamento à Vista com Desconto</Label>
+                    <div className="space-y-2">
+                      <Label htmlFor="payment_api_key">Access Token</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="payment_api_key"
+                          type="password"
+                          placeholder="••••••••••••••••"
+                          value={formData.payment_api_key || ""}
+                          onChange={(e) => handleChange("payment_api_key", e.target.value)}
+                        />
+                        <Button variant="outline" size="icon">
+                          <Key className="h-4 w-4" />
+                        </Button>
+                      </div>
                       <p className="text-sm text-muted-foreground">
-                        Oferecer desconto para pagamentos à vista.
+                        Chave de API do provedor selecionado (Mercado Pago ou Asaas).
                       </p>
                     </div>
-                    <Switch
-                      checked={formData.cash_discount || false}
-                      onCheckedChange={(checked) => handleChange("cash_discount", checked)}
-                    />
-                  </div>
-                </CardContent>
 
-              </Card>
-            </motion.div>
-          </TabsContent>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="enrollment_value">Valor da Matrícula (R$)</Label>
+                        <Input
+                          id="enrollment_value"
+                          type="number"
+                          value={formData.enrollment_value || ""}
+                          onChange={(e) => handleChange("enrollment_value", Number(e.target.value))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="max_installments">Máximo de Parcelas</Label>
+                        <Input
+                          id="max_installments"
+                          type="number"
+                          value={formData.max_installments || ""}
+                          onChange={(e) => handleChange("max_installments", Number(e.target.value))}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-lg border border-border p-4">
+                      <div>
+                        <Label>Pagamento à Vista com Desconto</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Oferecer desconto para pagamentos à vista.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={formData.cash_discount || false}
+                        onCheckedChange={(checked) => handleChange("cash_discount", checked)}
+                      />
+                    </div>
+                  </CardContent>
+
+                </Card>
+              </motion.div>
+            </TabsContent>
+          )}
 
           {/* Notificações */}
           <TabsContent value="notificacoes">
@@ -522,100 +530,102 @@ export default function AdminConfiguracoes() {
 
 
           {/* E-mail */}
-          <TabsContent value="email">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <Card className="shadow-soft">
-                <CardHeader>
-                  <CardTitle className="font-display">Configurações de E-mail</CardTitle>
-                  <CardDescription>
-                    Configure o servidor SMTP para envio de e-mails.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid gap-4 md:grid-cols-2">
+          {isAdmin && (
+            <TabsContent value="email">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <Card className="shadow-soft">
+                  <CardHeader>
+                    <CardTitle className="font-display">Configurações de E-mail</CardTitle>
+                    <CardDescription>
+                      Configure o servidor SMTP para envio de e-mails.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="smtp_host">Servidor SMTP</Label>
+                        <Input
+                          id="smtp_host"
+                          placeholder="smtp.gmail.com"
+                          value={formData.smtp_host || ""}
+                          onChange={(e) => handleChange("smtp_host", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="smtp_port">Porta</Label>
+                        <Input
+                          id="smtp_port"
+                          placeholder="587"
+                          type="number"
+                          value={formData.smtp_port || ""}
+                          onChange={(e) => handleChange("smtp_port", Number(e.target.value))}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="smtp_user">Usuário</Label>
+                        <Input
+                          id="smtp_user"
+                          placeholder="email@dominio.com"
+                          value={formData.smtp_user || ""}
+                          onChange={(e) => handleChange("smtp_user", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="smtp_pass">Senha</Label>
+                        <Input
+                          id="smtp_pass"
+                          type="password"
+                          placeholder="••••••••"
+                          value={formData.smtp_pass || ""}
+                          onChange={(e) => handleChange("smtp_pass", e.target.value)}
+                        />
+                      </div>
+                    </div>
+
                     <div className="space-y-2">
-                      <Label htmlFor="smtp_host">Servidor SMTP</Label>
+                      <Label htmlFor="sender_name">Nome do Remetente</Label>
                       <Input
-                        id="smtp_host"
-                        placeholder="smtp.gmail.com"
-                        value={formData.smtp_host || ""}
-                        onChange={(e) => handleChange("smtp_host", e.target.value)}
+                        id="sender_name"
+                        value={formData.sender_name || ""}
+                        onChange={(e) => handleChange("sender_name", e.target.value)}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="smtp_port">Porta</Label>
-                      <Input
-                        id="smtp_port"
-                        placeholder="587"
-                        type="number"
-                        value={formData.smtp_port || ""}
-                        onChange={(e) => handleChange("smtp_port", Number(e.target.value))}
-                      />
+
+                    <div className="flex justify-end pt-4 border-t">
+                      <Button
+                        variant="secondary"
+                        onClick={async () => {
+                          if (!formData.contact_email) {
+                            toast({ title: "Erro", description: "Configure um e-mail de contato para receber o teste." });
+                            return;
+                          }
+                          toast({ title: "Enviando...", description: "Testando envio para " + formData.contact_email });
+                          try {
+                            await settingsService.sendTestEmail(formData.contact_email);
+                            toast({ title: "Sucesso!", description: "E-mail enviado. Verifique sua caixa de entrada.", variant: "default" });
+                          } catch (e) {
+                            toast({ title: "Erro", description: "Falha ao enviar. Verifique as credenciais.", variant: "destructive" });
+                          }
+                        }}
+                        className="gap-2"
+                        type="button"
+                      >
+                        <Mail className="h-4 w-4" />
+                        Testar Configuração
+                      </Button>
                     </div>
-                  </div>
+                  </CardContent>
 
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="smtp_user">Usuário</Label>
-                      <Input
-                        id="smtp_user"
-                        placeholder="email@dominio.com"
-                        value={formData.smtp_user || ""}
-                        onChange={(e) => handleChange("smtp_user", e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="smtp_pass">Senha</Label>
-                      <Input
-                        id="smtp_pass"
-                        type="password"
-                        placeholder="••••••••"
-                        value={formData.smtp_pass || ""}
-                        onChange={(e) => handleChange("smtp_pass", e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="sender_name">Nome do Remetente</Label>
-                    <Input
-                      id="sender_name"
-                      value={formData.sender_name || ""}
-                      onChange={(e) => handleChange("sender_name", e.target.value)}
-                    />
-                  </div>
-
-                  <div className="flex justify-end pt-4 border-t">
-                    <Button
-                      variant="secondary"
-                      onClick={async () => {
-                        if (!formData.contact_email) {
-                          toast({ title: "Erro", description: "Configure um e-mail de contato para receber o teste." });
-                          return;
-                        }
-                        toast({ title: "Enviando...", description: "Testando envio para " + formData.contact_email });
-                        try {
-                          await settingsService.sendTestEmail(formData.contact_email);
-                          toast({ title: "Sucesso!", description: "E-mail enviado. Verifique sua caixa de entrada.", variant: "default" });
-                        } catch (e) {
-                          toast({ title: "Erro", description: "Falha ao enviar. Verifique as credenciais.", variant: "destructive" });
-                        }
-                      }}
-                      className="gap-2"
-                      type="button"
-                    >
-                      <Mail className="h-4 w-4" />
-                      Testar Configuração
-                    </Button>
-                  </div>
-                </CardContent>
-
-              </Card>
-            </motion.div>
-          </TabsContent>
+                </Card>
+              </motion.div>
+            </TabsContent>
+          )}
 
         </Tabs>
 

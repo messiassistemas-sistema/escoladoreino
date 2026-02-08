@@ -30,7 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Plus } from "lucide-react";
+import { Plus, Check, Copy, KeyRound, Loader2, MessageCircle } from "lucide-react";
 
 export function UsersManagement() {
     const { toast } = useToast();
@@ -42,6 +42,10 @@ export function UsersManagement() {
         role: "teacher"
     });
 
+    // New State for Credentials Modal
+    const [credentialModalOpen, setCredentialModalOpen] = useState(false);
+    const [activeCredentials, setActiveCredentials] = useState<{ email: string, password: string, name: string } | null>(null);
+
     const { data: users = [], isLoading } = useQuery({
         queryKey: ["admin-users"],
         queryFn: settingsService.getUsers
@@ -49,16 +53,52 @@ export function UsersManagement() {
 
     const createMutation = useMutation({
         mutationFn: (data: any) => settingsService.createUser(data),
-        onSuccess: () => {
+        onSuccess: (response: { password: string }) => {
             queryClient.invalidateQueries({ queryKey: ["admin-users"] });
             setIsOpen(false);
+
+            // Set credentials and open modal
+            setActiveCredentials({
+                email: newUser.email,
+                password: response.password,
+                name: newUser.fullName
+            });
+            setCredentialModalOpen(true);
+
             setNewUser({ fullName: "", email: "", role: "teacher" });
-            toast({ title: "Usuário convidado com sucesso!", description: "As credenciais foram enviadas por e-mail." });
+            toast({ title: "Usuário criado!", description: "Credenciais geradas com sucesso." });
         },
         onError: (error: Error) => {
             toast({ title: "Erro", description: error.message, variant: "destructive" });
         }
     });
+
+    const resetPasswordMutation = useMutation({
+        mutationFn: (user: { id: string, email: string, full_name: string }) => settingsService.resetUserPassword(user.id, user.email),
+        onSuccess: (response: { password: string }, variables) => {
+            setActiveCredentials({
+                email: variables.email,
+                password: response.password,
+                name: variables.full_name
+            });
+            setCredentialModalOpen(true);
+            toast({ title: "Senha redefinida!", description: "Nova senha gerada com sucesso." });
+        },
+        onError: (error: Error) => {
+            toast({ title: "Erro", description: error.message, variant: "destructive" });
+        }
+    });
+
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text);
+        toast({ title: "Copiado!", description: "Texto copiado para a área de transferência." });
+    };
+
+    const sendToWhatsapp = () => {
+        if (!activeCredentials) return;
+        const text = `Olá ${activeCredentials.name}, segue seu acesso ao sistema Escola do Reino:\n\n*Login:* ${activeCredentials.email}\n*Senha:* ${activeCredentials.password}\n\nAcesse em: https://escoladoreino.com.br`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    };
 
     return (
         <div className="space-y-4">
@@ -125,6 +165,7 @@ export function UsersManagement() {
                             <TableHead>E-mail</TableHead>
                             <TableHead>Cargo</TableHead>
                             <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Ações</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -141,6 +182,20 @@ export function UsersManagement() {
                                     </Badge>
                                 </TableCell>
                                 <TableCell><Badge className="bg-green-100 text-green-700 hover:bg-green-100">Ativo</Badge></TableCell>
+                                <TableCell className="text-right">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                            if (confirm("Deseja redefinir a senha deste usuário?")) {
+                                                resetPasswordMutation.mutate(user as any);
+                                            }
+                                        }}
+                                        disabled={resetPasswordMutation.isPending}
+                                    >
+                                        {resetPasswordMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4 text-muted-foreground hover:text-primary" />}
+                                    </Button>
+                                </TableCell>
                             </TableRow>
                         ))}
                         {users.length === 0 && !isLoading && (
@@ -153,6 +208,59 @@ export function UsersManagement() {
                     </TableBody>
                 </Table>
             </div>
+            {/* Credentials Success Modal */}
+            <Dialog open={credentialModalOpen} onOpenChange={setCredentialModalOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Check className="h-5 w-5 text-green-500" />
+                            Credenciais de Acesso
+                        </DialogTitle>
+                        <DialogDescription>
+                            Envie estas credenciais para o usuário agora.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {activeCredentials && (
+                        <div className="space-y-4 py-4">
+                            <div className="p-4 bg-muted rounded-lg space-y-3">
+                                <div>
+                                    <Label className="text-xs text-muted-foreground">E-mail (Login)</Label>
+                                    <div className="flex items-center justify-between">
+                                        <p className="font-mono font-medium">{activeCredentials.email}</p>
+                                        <Button variant="ghost" size="icon" onClick={() => copyToClipboard(activeCredentials.email)}>
+                                            <Copy className="h-3 w-3" />
+                                        </Button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <Label className="text-xs text-muted-foreground">Senha Gerada</Label>
+                                    <div className="flex items-center justify-between">
+                                        <p className="font-mono font-medium">{activeCredentials.password}</p>
+                                        <Button variant="ghost" size="icon" onClick={() => copyToClipboard(activeCredentials.password)}>
+                                            <Copy className="h-3 w-3" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <Button
+                                className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white"
+                                onClick={sendToWhatsapp}
+                            >
+                                <MessageCircle className="h-4 w-4" />
+                                Enviar no WhatsApp
+                            </Button>
+                        </div>
+                    )}
+
+                    <DialogFooter>
+                        <Button variant="secondary" onClick={() => setCredentialModalOpen(false)}>
+                            Fechar
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

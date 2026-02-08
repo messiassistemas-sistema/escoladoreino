@@ -102,20 +102,27 @@ export const settingsService = {
     },
 
     async updateSettings(settings: Partial<SystemSettings>): Promise<SystemSettings> {
-        // We update the single record. For now, we assume there's only one.
-        const { data: current } = await supabase.from("system_settings").select("id").limit(1).maybeSingle();
+        // Remove ID from payload to avoid PK conflict
+        const { id, ...updateData } = settings;
+
+        // Ensure we really have only one settings record
+        const { data: current } = await supabase
+            .from("system_settings")
+            .select("id")
+            .limit(1)
+            .maybeSingle();
 
         if (!current) {
             // Se não existir, criamos o primeiro registro
             const { data, error } = await supabase
                 .from("system_settings")
                 .insert({
-                    ...settings,
-                    school_name: settings.school_name || "Escola do Reino", // Default values
-                    min_grade: settings.min_grade || 7,
-                    min_attendance: settings.min_attendance || 75,
-                    enrollment_value: settings.enrollment_value || 100,
-                    max_installments: settings.max_installments || 12,
+                    ...updateData,
+                    school_name: updateData.school_name || "Escola do Reino", // Default values
+                    min_grade: updateData.min_grade || 7,
+                    min_attendance: updateData.min_attendance || 75,
+                    enrollment_value: updateData.enrollment_value || 100,
+                    max_installments: updateData.max_installments || 12,
                     updated_at: new Date().toISOString(),
                 })
                 .select()
@@ -132,7 +139,7 @@ export const settingsService = {
         const { data, error } = await supabase
             .from("system_settings")
             .update({
-                ...settings,
+                ...updateData,
                 updated_at: new Date().toISOString(),
             })
             .eq("id", current.id)
@@ -164,7 +171,7 @@ export const settingsService = {
         return data as UserProfile[];
     },
 
-    async createUser(user: { email: string; fullName: string; role: string }): Promise<void> {
+    async createUser(user: { email: string; fullName: string; role: string }): Promise<{ password: string }> {
         // Generate a random temp password
         const tempPassword = Math.random().toString(36).slice(-8) + "A1!";
 
@@ -175,21 +182,59 @@ export const settingsService = {
         if (error) throw new Error(`Erro na função: ${error.message}`);
         if (data?.error) throw new Error(data.error);
 
-        // Optionally send email with credentials
-        await this.sendEmail(
-            user.email,
-            "Acesso ao Sistema - Escola do Reino",
-            `
-                <h1>Bem-vindo(a) à Equipe!</h1>
-                <p>Olá ${user.fullName},</p>
-                <p>Sua conta de acesso foi criada com sucesso.</p>
-                <p><strong>Cargo:</strong> ${user.role.toUpperCase()}</p>
-                <p><strong>E-mail:</strong> ${user.email}</p>
-                <p><strong>Senha Temporária:</strong> ${tempPassword}</p>
-                <br/>
-                <p>Acesse o sistema e troque sua senha assim que possível.</p>
-            `
-        );
+        // Optionally send email with credentials (try-catch to avoid blocking if SMTP is not configured)
+        try {
+            await this.sendEmail(
+                user.email,
+                "Acesso ao Sistema - Escola do Reino",
+                `
+                    <h1>Bem-vindo(a) à Equipe!</h1>
+                    <p>Olá ${user.fullName},</p>
+                    <p>Sua conta de acesso foi criada com sucesso.</p>
+                    <p><strong>Cargo:</strong> ${user.role.toUpperCase()}</p>
+                    <p><strong>E-mail:</strong> ${user.email}</p>
+                    <p><strong>Senha Temporária:</strong> ${tempPassword}</p>
+                    <br/>
+                    <p>Acesse o sistema e troque sua senha assim que possível.</p>
+                `
+            );
+        } catch (emailError) {
+            console.warn("Erro ao enviar e-mail de boas-vindas (SMTP pode não estar configurado):", emailError);
+            // Non-blocking error
+        }
+
+        return { password: tempPassword };
+    },
+
+    async resetUserPassword(userId: string, email: string): Promise<{ password: string }> {
+        const newPassword = Math.random().toString(36).slice(-8) + "A1!";
+
+        const { data, error } = await supabase.functions.invoke("admin-change-password", {
+            body: { userId, email, newPassword }
+        });
+
+        if (error) throw new Error(`Erro na função: ${error.message}`);
+        if (data?.error) throw new Error(data.error);
+
+        // Send email with new credentials (try-catch)
+        try {
+            await this.sendEmail(
+                email,
+                "Redefinição de Senha - Escola do Reino",
+                `
+                    <h1>Nova Senha Gerada</h1>
+                    <p>Sua senha foi redefinida pelo administrador.</p>
+                    <p><strong>Nova Senha:</strong> ${newPassword}</p>
+                    <br/>
+                    <p>Acesse o sistema e troque sua senha assim que possível.</p>
+                `
+            );
+        } catch (emailError) {
+            console.warn("Erro ao enviar e-mail de redefinição (SMTP pode não estar configurado):", emailError);
+            // Non-blocking error
+        }
+
+        return { password: newPassword };
     },
 
     // ... existing email methods ...
