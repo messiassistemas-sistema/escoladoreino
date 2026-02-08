@@ -19,6 +19,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { asaasService } from "@/services/asaasService";
+import { settingsService } from "@/services/settingsService";
 
 export default function Matricula() {
   useEffect(() => {
@@ -166,6 +167,21 @@ export default function Matricula() {
       return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
     }
     return value;
+  };
+
+  const { data: settings } = useQuery({
+    queryKey: ["system-settings"],
+    queryFn: settingsService.getSettings,
+  });
+
+  const getPaymentProviderLabel = (provider: string | undefined) => {
+    switch (provider) {
+      case 'asaas': return 'Asaas';
+      case 'stripe': return 'Stripe';
+      case 'mercadopago': return 'Mercado Pago';
+      case 'pagseguro': return 'PagSeguro';
+      default: return 'Mercado Pago'; // Default fallback
+    }
   };
 
   return (
@@ -323,7 +339,7 @@ export default function Matricula() {
               <div className="mt-6 border-t border-border pt-6">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <CheckCircle className="h-4 w-4 text-success" />
-                  Pagamento seguro via Mercado Pago
+                  Pagamento seguro via {getPaymentProviderLabel(settings?.payment_provider)}
                 </div>
               </div>
             </motion.div>
@@ -340,9 +356,9 @@ export default function Matricula() {
               </Link>
             </motion.p>
           </div>
-        </div >
-      </main >
+        </div>
+      </main>
       <Footer />
-    </div >
+    </div>
   );
 }
