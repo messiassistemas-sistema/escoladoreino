@@ -14,6 +14,7 @@ import { PortalLayout } from "@/components/portal/PortalLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
+import { ptBR } from "date-fns/locale";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -82,6 +83,7 @@ export default function PortalCalendario() {
                   selected={date}
                   onSelect={setDate}
                   className="rounded-xl w-full"
+                  locale={ptBR}
                   modifiers={{
                     hasClass: datasComAula,
                   }}
