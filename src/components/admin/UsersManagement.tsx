@@ -195,6 +195,20 @@ export function UsersManagement() {
                                     >
                                         {resetPasswordMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4 text-muted-foreground hover:text-primary" />}
                                     </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                        onClick={() => {
+                                            if (confirm(`Deseja gerar uma nova senha para ${user.full_name} e enviar pelo WhatsApp?`)) {
+                                                resetPasswordMutation.mutate(user as any);
+                                            }
+                                        }}
+                                        disabled={resetPasswordMutation.isPending}
+                                        title="Gerar nova senha e enviar no WhatsApp"
+                                    >
+                                        <MessageCircle className="h-4 w-4" />
+                                    </Button>
                                 </TableCell>
                             </TableRow>
                         ))}

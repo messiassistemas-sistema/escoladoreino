@@ -16,6 +16,8 @@ export interface Lesson {
     subject?: {
         name: string;
     };
+    recording_link?: string;
+    release_for_presencial?: boolean;
 }
 
 export const lessonsService = {

@@ -28,6 +28,11 @@ import { announcementsService } from "@/services/announcementsService";
 export default function PortalDashboard() {
   const { user } = useAuth();
 
+  const parseLocalDate = (dateStr: string) => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
+
   // Fetch Student Profile
   const { data: student } = useQuery({
     queryKey: ['student-profile', user?.email],
@@ -68,13 +73,14 @@ export default function PortalDashboard() {
   // 2. Attendance
   const totalAttendance = attendance.length;
   const presentCount = attendance.filter((r: any) => r.status === 'present').length;
-  const attendanceRate = totalAttendance > 0 ? (presentCount / totalAttendance) * 100 : 100;
+  const attendanceRate = totalAttendance > 0 ? (presentCount / totalAttendance) * 100 : 0;
 
   // 3. Upcoming Lessons
   const now = new Date();
+  now.setHours(0, 0, 0, 0); // Normalize 'now' to midnight for fair comparison
   const upcomingLessons = lessons
-    .filter((l: any) => new Date(l.date) >= now)
-    .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .filter((l: any) => parseLocalDate(l.date) >= now)
+    .sort((a: any, b: any) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime())
     .slice(0, 2);
 
   // 4. Grades Summary (Grouped by Subject)
@@ -243,7 +249,7 @@ export default function PortalDashboard() {
                             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground/60">{aula.class_name || "Turma Geral"}</span>
                             <div className="flex items-center gap-1.5 text-xs font-bold text-primary">
                               <Calendar className="h-3.5 w-3.5" />
-                              {new Date(aula.date).toLocaleDateString("pt-BR", { day: '2-digit', month: 'short' }).toUpperCase()}
+                              {parseLocalDate(aula.date).toLocaleDateString("pt-BR", { day: '2-digit', month: 'short' }).toUpperCase()}
                             </div>
                           </div>
                           <h4 className="font-display text-xl font-bold leading-tight group-hover:text-primary transition-colors">{aula.subject?.name || "Disciplina não definida"}</h4>
@@ -254,7 +260,22 @@ export default function PortalDashboard() {
                           <div className="flex items-center gap-4 text-sm font-semibold text-muted-foreground">
                             <span className="flex items-center gap-1.5"><Clock className="h-4 w-4 text-primary" /> {aula.time}</span>
                           </div>
-                          <Button size="sm" className="rounded-xl shadow-lg shadow-primary/10">Ver Detalhes</Button>
+                          <div className="flex items-center gap-2">
+                            {(aula.recording_link && (
+                              student?.modality === 'online' ||
+                              (student?.modality === 'presencial' && aula.release_for_presencial)
+                            )) && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="rounded-xl border-primary/20 text-primary hover:bg-primary/5 font-bold"
+                                  onClick={() => window.open(aula.recording_link, '_blank')}
+                                >
+                                  Ver Gravação
+                                </Button>
+                              )}
+                            <Button size="sm" className="rounded-xl shadow-lg shadow-primary/10">Ver Detalhes</Button>
+                          </div>
                         </div>
                       </CardContent>
                     </div>
@@ -344,24 +365,26 @@ export default function PortalDashboard() {
           <h3 className="font-display text-2xl font-bold mb-6">Recursos para seus Estudos</h3>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { label: "Pasta de Materiais", icon: Download, desc: "Acesse slides e apostilas" },
-              { label: "Gravações", icon: PlayCircle, desc: "Reveja aulas passadas" },
-              { label: "Bibilioteca Virtual", icon: BookOpen, desc: "Acervo de obras teológicas" },
-              { label: "Dúvidas Acadêmicas", icon: Bell, desc: "Fale com os tutores" },
+              { label: "Pasta de Materiais", icon: Download, desc: "Acesse slides e apostilas", link: "/portal/materiais" },
+              { label: "Gravações", icon: PlayCircle, desc: "Reveja aulas passadas", link: "/portal/materiais" },
+              { label: "Bibilioteca Virtual", icon: BookOpen, desc: "Acervo de obras teológicas", link: "/portal/materiais" },
+              { label: "Dúvidas Acadêmicas", icon: Bell, desc: "Fale com os tutores", link: "/portal/ajuda" },
             ].map((resource, i) => (
-              <Card key={i} className="group border-border/50 bg-background/50 hover:bg-primary/5 hover:border-primary/20 transition-all cursor-pointer shadow-none">
-                <CardContent className="p-6">
-                  <div className="flex flex-col items-center text-center space-y-3">
-                    <div className="h-12 w-12 rounded-full bg-muted group-hover:bg-primary/10 flex items-center justify-center transition-colors">
-                      <resource.icon className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
+              <Link key={i} to={resource.link}>
+                <Card className="group h-full border-border/50 bg-background/50 hover:bg-primary/5 hover:border-primary/20 transition-all cursor-pointer shadow-none">
+                  <CardContent className="p-6 h-full flex flex-col justify-center">
+                    <div className="flex flex-col items-center text-center space-y-3">
+                      <div className="h-12 w-12 rounded-full bg-muted group-hover:bg-primary/10 flex items-center justify-center transition-colors">
+                        <resource.icon className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-sm tracking-tight">{resource.label}</h4>
+                        <p className="text-xs text-muted-foreground font-medium">{resource.desc}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-bold text-sm tracking-tight">{resource.label}</h4>
-                      <p className="text-xs text-muted-foreground font-medium">{resource.desc}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
         </motion.div>

@@ -64,6 +64,7 @@ export default function AdminAlunos() {
     status: 'ativo' as "ativo" | "pendente" | "formado" | "inativo",
     attendance_rate: 0,
     average_grade: 0,
+    modality: 'presencial' as 'presencial' | 'online',
   });
 
   // Details Dialog State
@@ -87,6 +88,7 @@ export default function AdminAlunos() {
         status: editingStudent.status,
         attendance_rate: editingStudent.attendance_rate || 0,
         average_grade: editingStudent.average_grade || 0,
+        modality: editingStudent.modality || 'presencial',
       });
     } else {
       setFormData({
@@ -98,6 +100,7 @@ export default function AdminAlunos() {
         status: 'ativo',
         attendance_rate: 0,
         average_grade: 0,
+        modality: 'presencial',
       });
     }
   }, [editingStudent]);
@@ -293,22 +296,39 @@ export default function AdminAlunos() {
                     />
                   </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label>Status</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value: any) => setFormData(prev => ({ ...prev, status: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ativo">Ativo</SelectItem>
-                      <SelectItem value="pendente">Pendente</SelectItem>
-                      <SelectItem value="formado">Formado</SelectItem>
-                      <SelectItem value="inativo">Inativo</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>Modalidade</Label>
+                    <Select
+                      value={formData.modality}
+                      onValueChange={(value: any) => setFormData(prev => ({ ...prev, modality: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="presencial">Presencial</SelectItem>
+                        <SelectItem value="online">Online</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Status</Label>
+                    <Select
+                      value={formData.status}
+                      onValueChange={(value: any) => setFormData(prev => ({ ...prev, status: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ativo">Ativo</SelectItem>
+                        <SelectItem value="pendente">Pendente</SelectItem>
+                        <SelectItem value="formado">Formado</SelectItem>
+                        <SelectItem value="inativo">Inativo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
               <DialogFooter>
@@ -346,6 +366,9 @@ export default function AdminAlunos() {
                     <div>
                       <Badge variant={detailsStudent.status === 'ativo' ? 'default' : 'secondary'} className={detailsStudent.status === 'ativo' ? 'bg-success text-success-foreground' : ''}>
                         {detailsStudent.status.toUpperCase()}
+                      </Badge>
+                      <Badge variant="outline" className="ml-2">
+                        {detailsStudent.modality ? detailsStudent.modality.toUpperCase() : 'PRESENCIAL'}
                       </Badge>
                     </div>
                   </div>
@@ -520,6 +543,13 @@ export default function AdminAlunos() {
                             <p className="text-sm text-muted-foreground">
                               {aluno.email}
                             </p>
+                            <div className="flex gap-2 mt-1">
+                              {aluno.modality === 'online' && (
+                                <Badge variant="secondary" className="text-[10px] h-5 bg-blue-100 text-blue-700 hover:bg-blue-200">
+                                  ONLINE
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </TableCell>

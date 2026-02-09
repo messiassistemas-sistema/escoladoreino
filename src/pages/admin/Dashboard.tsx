@@ -60,22 +60,11 @@ export default function AdminDashboard() {
         .from("students")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(3);
+        .limit(5);
       return data || [];
     },
   });
 
-  // Dynamic tasks based on real data
-  const pendingCount = parseInt(statsData.find(s => s.label === "Matrículas Pendentes")?.value || "0");
-
-  const pendingTasks = [
-    ...(pendingCount > 0 ? [{
-      title: `Aprovar ${pendingCount} matrícula${pendingCount > 1 ? 's' : ''} pendente${pendingCount > 1 ? 's' : ''}`,
-      priority: "high"
-    }] : []),
-    { title: "Lançar notas de Teologia Sistemática", priority: "medium" },
-    { title: "Publicar aviso sobre recesso", priority: "low" },
-  ];
 
 
   return (
@@ -120,7 +109,7 @@ export default function AdminDashboard() {
 
 
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="space-y-6">
           {/* Recent Enrollments */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -179,67 +168,8 @@ export default function AdminDashboard() {
             </Card>
           </motion.div>
 
-          {/* Pending Tasks */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-          >
-            <Card className="shadow-soft">
-              <CardHeader>
-                <CardTitle className="font-display">Tarefas Pendentes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {pendingTasks.map((task, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-4 rounded-lg border border-border p-4"
-                    >
-                      <div
-                        className={`flex h-10 w-10 items-center justify-center rounded-full ${task.priority === "high"
-                          ? "bg-destructive/10"
-                          : task.priority === "medium"
-                            ? "bg-warning/10"
-                            : "bg-muted"
-                          }`}
-                      >
-                        <AlertCircle
-                          className={`h-5 w-5 ${task.priority === "high"
-                            ? "text-destructive"
-                            : task.priority === "medium"
-                              ? "text-warning"
-                              : "text-muted-foreground"
-                            }`}
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium">{task.title}</p>
-                      </div>
-                      <Badge
-                        variant="outline"
-                        className={
-                          task.priority === "high"
-                            ? "border-destructive/30 text-destructive"
-                            : task.priority === "medium"
-                              ? "border-warning/30 text-warning"
-                              : ""
-                        }
-                      >
-                        {task.priority === "high"
-                          ? "Alta"
-                          : task.priority === "medium"
-                            ? "Média"
-                            : "Baixa"}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
         </div>
       </div>
-    </AdminLayout>
+    </AdminLayout >
   );
 }

@@ -53,7 +53,7 @@ export default function PortalPresenca() {
   const totalRecords = attendanceRecords.length;
   const presencas = attendanceRecords.filter((r: any) => r.status === 'present').length;
   const faltas = attendanceRecords.filter((r: any) => r.status === 'absent').length;
-  const attendanceRate = totalRecords > 0 ? (presencas / totalRecords) * 100 : 100;
+  const attendanceRate = totalRecords > 0 ? (presencas / totalRecords) * 100 : 0;
 
   // Recent History
   const historicoPresenca = attendanceRecords

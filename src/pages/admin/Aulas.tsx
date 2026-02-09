@@ -22,6 +22,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -80,6 +81,8 @@ export default function AdminAulas() {
     location: "",
     mode: 'presencial' as 'presencial' | 'online',
     status: 'agendada' as 'agendada' | 'realizada' | 'cancelada',
+    recording_link: "",
+    release_for_presencial: false
   });
 
   const { data: aulas = [], isLoading } = useQuery({
@@ -108,6 +111,8 @@ export default function AdminAulas() {
         location: editingLesson.location || "",
         mode: editingLesson.mode,
         status: editingLesson.status,
+        recording_link: editingLesson.recording_link || "",
+        release_for_presencial: editingLesson.release_for_presencial || false,
       });
     } else {
       setFormData({
@@ -119,6 +124,8 @@ export default function AdminAulas() {
         location: "",
         mode: 'presencial',
         status: 'agendada',
+        recording_link: "",
+        release_for_presencial: false,
       });
     }
   }, [editingLesson]);
@@ -283,7 +290,6 @@ export default function AdminAulas() {
       toast({
         title: "Compartilhamento não suportado",
         description: "Seu navegador não suporta compartilhamento direto de imagens. Use a opção de baixar.",
-        variant: "secondary"
       });
     }
   };
@@ -430,6 +436,25 @@ export default function AdminAulas() {
                         <SelectItem value="cancelada">Cancelada</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="recording_link">Link da Gravação (Opcional)</Label>
+                  <Input
+                    id="recording_link"
+                    placeholder="https://youtube.com/..."
+                    value={formData.recording_link}
+                    onChange={(e) => setFormData(p => ({ ...p, recording_link: e.target.value }))}
+                  />
+                  <div className="flex items-center space-x-2 mt-2">
+                    <Checkbox
+                      id="release_for_presencial"
+                      checked={formData.release_for_presencial}
+                      onCheckedChange={(checked) => setFormData(p => ({ ...p, release_for_presencial: checked === true }))}
+                    />
+                    <Label htmlFor="release_for_presencial" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      Liberar gravação para alunos presenciais
+                    </Label>
                   </div>
                 </div>
               </div>

@@ -10,6 +10,7 @@ export interface Student {
     status: 'ativo' | 'pendente' | 'formado' | 'inativo';
     attendance_rate: number;
     average_grade: number;
+    modality: 'presencial' | 'online';
     created_at?: string;
     updated_at?: string;
 }

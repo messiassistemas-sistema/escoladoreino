@@ -29,13 +29,28 @@ export default function PortalCalendario() {
     queryFn: lessonsService.getLessons
   });
 
-  const selectedDateStr = date?.toISOString().split("T")[0];
+  const { data: student } = useQuery({
+    queryKey: ['student-profile'],
+    queryFn: async () => {
+      const { data: { user } } = await import("@/integrations/supabase/client").then(m => m.supabase.auth.getUser());
+      if (!user?.email) return null;
+      const { studentsService } = await import("@/services/studentsService");
+      return studentsService.getStudentByEmail(user.email);
+    }
+  });
+
+  const parseLocalDate = (dateStr: string) => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
+
+  const selectedDateStr = date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` : undefined;
   const aulasNoDia = lessons.filter((a: any) => a.date === selectedDateStr);
-  const datasComAula = lessons.map((a: any) => new Date(a.date));
+  const datasComAula = lessons.map((a: any) => parseLocalDate(a.date));
 
   const proximasAulas = lessons
-    .filter((a: any) => new Date(a.date) >= new Date())
-    .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .filter((a: any) => parseLocalDate(a.date) >= new Date(new Date().setHours(0, 0, 0, 0)))
+    .sort((a: any, b: any) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime())
     .slice(0, 5);
 
   const containerVariants = {
@@ -177,6 +192,17 @@ export default function PortalCalendario() {
                             >
                               {aula.mode === 'online' ? 'Acessar Live' : 'Ver Local'}
                             </Button>
+                            {(aula.recording_link && (
+                              student?.modality === 'online' ||
+                              (student?.modality === 'presencial' && aula.release_for_presencial)
+                            )) && (
+                                <Button
+                                  className="hidden sm:flex rounded-xl font-bold bg-muted text-foreground hover:bg-primary hover:text-white transition-all ml-2"
+                                  onClick={() => window.open(aula.recording_link, '_blank')}
+                                >
+                                  Ver Gravação
+                                </Button>
+                              )}
                           </div>
                         </div>
                       </CardContent>
@@ -204,7 +230,7 @@ export default function PortalCalendario() {
 
             <div className="grid gap-3">
               {proximasAulas.map((aula: any, index: number) => {
-                const aulaDate = new Date(aula.date);
+                const aulaDate = parseLocalDate(aula.date);
                 const isToday = aulaDate.toDateString() === new Date().toDateString();
 
                 return (
