@@ -20,6 +20,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { asaasService } from "@/services/asaasService";
 import { settingsService } from "@/services/settingsService";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Matricula() {
   useEffect(() => {
@@ -72,6 +73,7 @@ export default function Matricula() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("handleSubmit iniciado", formData);
 
     if (!formData.acceptTerms) {
       toast({
@@ -110,6 +112,40 @@ export default function Matricula() {
         mobilePhone: cleanPhone,
         externalReference: formData.email
       });
+
+      // 2.5 Send WhatsApp Notification
+      try {
+        const firstName = formData.nome.split(" ")[0];
+        // Use configured message or fallback
+        const messageTemplate = settings?.whatsapp_welcome_message || "Olá {nome}, que bom que sua matrícula foi feita na Escola do Reino! Em breve entraremos em contato.";
+        const finalMessage = messageTemplate.replace(/{nome}/g, firstName).replace(/{name}/g, firstName);
+
+        console.log("Tentando enviar WhatsApp...", { phone: cleanPhone, message: finalMessage });
+
+        const { data, error } = await supabase.functions.invoke("send-whatsapp", {
+          body: {
+            phone: cleanPhone,
+            message: finalMessage,
+          },
+        });
+
+        if (error) {
+          console.error("Erro na função send-whatsapp:", error);
+          throw error;
+        }
+
+        if (data && data.success === false) {
+          console.error("Erro retornado pela API:", data.error);
+          alert(`Erro no WhatsApp: ${data.error}`);
+          throw new Error(data.error);
+        }
+
+        console.log("WhatsApp enviado com sucesso:", data);
+
+      } catch (waError: any) {
+        console.error("Falha ao enviar WhatsApp (Catch):", waError);
+        // Continue execution, don't block payment flow
+      }
 
       // 3. Create Payment 
       const payment = await asaasService.createPayment({
@@ -234,7 +270,7 @@ export default function Matricula() {
               transition={{ delay: 0.1 }}
               className="rounded-2xl border border-border bg-card p-6 shadow-card md:p-8"
             >
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-6" noValidate>
                 <div className="space-y-2">
                   <Label htmlFor="nome">Nome completo *</Label>
                   <Input

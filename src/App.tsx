@@ -42,6 +42,7 @@ import AdminMensagens from "./pages/admin/AdminMensagens";
 import AdminEditorSite from "./pages/admin/EditorSite";
 import AdminUsuarios from "./pages/admin/Usuarios";
 import AdminHelpCenter from "./pages/admin/HelpCenter";
+import AdminComunicados from "./pages/admin/AdminComunicados";
 
 // Login Page
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -117,6 +118,7 @@ const App = () => (
 
                 <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
                 <Route path="/admin/mensagens" element={<AdminMensagens />} />
+                <Route path="/admin/comunicados" element={<AdminComunicados />} />
               </Route>
 
               {/* Catch-all */}

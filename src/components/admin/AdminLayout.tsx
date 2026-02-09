@@ -21,7 +21,8 @@ import {
   Search,
   ChevronDown,
   Mail,
-  HelpCircle
+  HelpCircle,
+  MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -51,7 +52,8 @@ const sidebarLinks = [
       { href: "/admin/turmas", label: "Gestão de Turmas", icon: School },
       { href: "/admin/disciplinas", label: "Disciplinas", icon: BookOpen },
       { href: "/admin/aulas", label: "Cronograma de Aulas", icon: Calendar },
-      { href: "/admin/avisos", label: "Comunicados", icon: Bell },
+      { href: "/admin/avisos", label: "Mural de Avisos", icon: Bell },
+      { href: "/admin/comunicados", label: "Disparo WhatsApp", icon: MessageSquare },
     ]
   },
   {

@@ -10,6 +10,7 @@ import {
   Mail,
   Key,
   Users,
+  MessageCircle,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -65,7 +66,7 @@ export default function AdminConfiguracoes() {
     onError: (error) => {
       toast({
         title: "Erro ao salvar",
-        description: "Não foi possível salvar as configurações.",
+        description: `Erro: ${error instanceof Error ? error.message : "Erro desconhecido"}`,
         variant: "destructive",
       });
       console.error(error);
@@ -460,6 +461,25 @@ export default function AdminConfiguracoes() {
                       checked={formData.grade_notif || false}
                       onCheckedChange={(checked) => handleChange("grade_notif", checked)}
                     />
+                  </div>
+
+                  <div className="space-y-4 pt-4 border-t">
+                    <h4 className="font-semibold text-sm flex items-center gap-2">
+                      <MessageCircle className="h-4 w-4" /> WhatsApp
+                    </h4>
+                    <div className="space-y-2">
+                      <Label htmlFor="whatsapp_welcome_message">Mensagem de Boas-Vindas (Ao matricular)</Label>
+                      <Textarea
+                        id="whatsapp_welcome_message"
+                        value={formData.whatsapp_welcome_message || ""}
+                        onChange={(e) => handleChange("whatsapp_welcome_message", e.target.value)}
+                        placeholder="Olá {nome}, bem-vindo à Escola do Reino!"
+                        rows={3}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Use <strong>{'{nome}'}</strong> para inserir o nome do aluno automaticamente.
+                      </p>
+                    </div>
                   </div>
                 </CardContent>
 

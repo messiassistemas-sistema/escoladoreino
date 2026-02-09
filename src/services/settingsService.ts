@@ -28,6 +28,7 @@ export interface SystemSettings {
     smtp_pass: string | null;
     sender_name: string | null;
     logo_url: string | null;
+    whatsapp_welcome_message: string | null;
     updated_at: string;
 }
 
@@ -94,6 +95,7 @@ export const settingsService = {
                 smtp_pass: null,
                 sender_name: null,
                 logo_url: null,
+                whatsapp_welcome_message: "Olá {nome}, que bom que sua matrícula foi feita na Escola do Reino! Em breve entraremos em contato.",
                 updated_at: new Date().toISOString()
             } as SystemSettings;
         }
@@ -148,6 +150,7 @@ export const settingsService = {
 
         if (error) {
             console.error("Erro ao atualizar configurações:", error);
+            console.error("Detalhes do erro:", JSON.stringify(error, null, 2));
             throw error;
         }
 
