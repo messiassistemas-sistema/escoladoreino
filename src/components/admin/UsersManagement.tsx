@@ -30,7 +30,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Check, Copy, KeyRound, Loader2, MessageCircle } from "lucide-react";
+import { Plus, Check, Copy, KeyRound, Loader2, MessageCircle, RefreshCcw, Key } from "lucide-react";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export function UsersManagement() {
     const { toast } = useToast();
@@ -45,6 +51,11 @@ export function UsersManagement() {
     // New State for Credentials Modal
     const [credentialModalOpen, setCredentialModalOpen] = useState(false);
     const [activeCredentials, setActiveCredentials] = useState<{ email: string, password: string, name: string } | null>(null);
+
+    // Manual Password State
+    const [manualPasswordOpen, setManualPasswordOpen] = useState(false);
+    const [selectedUserForPassword, setSelectedUserForPassword] = useState<any>(null);
+    const [manualPassword, setManualPassword] = useState("");
 
     const { data: users = [], isLoading } = useQuery({
         queryKey: ["admin-users"],
@@ -83,6 +94,45 @@ export function UsersManagement() {
             });
             setCredentialModalOpen(true);
             toast({ title: "Senha redefinida!", description: "Nova senha gerada com sucesso." });
+            setManualPasswordOpen(false); // Close manual dialog if open
+            setManualPassword(""); // Reset
+        },
+        onError: (error: Error) => {
+            toast({ title: "Erro", description: error.message, variant: "destructive" });
+        }
+    });
+
+    const handleManualPasswordSubmit = () => {
+        if (!selectedUserForPassword || !manualPassword) return;
+
+        // We override the service call slightly here or we assume the service supports passing a password?
+        // Let's check settingsService.resetUserPassword. 
+        // It generates a random password internally: const newPassword = Math.random().toString(36).slice(-8) + "A1!";
+        // We need to UPDATE settingsService to accept an optional password.
+
+        // Since I cannot change settingsService in this same tool call easily without risk, I will assume I will update it next.
+        // For now, I'll pass it as a second argument (which TS might complain about until I fix it).
+        // Actually, let's call the mutation with extra data if possible, or create a new mutation.
+
+        // Better approach: Update the mutation implementation to look for a custom password in variables
+        manualPasswordMutation.mutate({
+            user: selectedUserForPassword,
+            password: manualPassword
+        });
+    };
+
+    const manualPasswordMutation = useMutation({
+        mutationFn: (data: { user: any, password: string }) => settingsService.resetUserPassword(data.user.id, data.user.email, data.password),
+        onSuccess: (response: { password: string }, variables) => {
+            setActiveCredentials({
+                email: variables.user.email,
+                password: response.password,
+                name: variables.user.full_name
+            });
+            setCredentialModalOpen(true);
+            setManualPasswordOpen(false);
+            setManualPassword("");
+            toast({ title: "Sucesso", description: "Senha definida manualmente." });
         },
         onError: (error: Error) => {
             toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -108,6 +158,33 @@ export function UsersManagement() {
                     <DialogTrigger asChild>
                         <Button className="gap-2"><Plus className="h-4 w-4" /> Novo Usuário</Button>
                     </DialogTrigger>
+                    {/* Manual Password Dialog */}
+                    <Dialog open={manualPasswordOpen} onOpenChange={setManualPasswordOpen}>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Definir Senha Manualmente</DialogTitle>
+                                <DialogDescription>
+                                    Defina uma senha específica para {selectedUserForPassword?.full_name}.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                    <Label>Nova Senha</Label>
+                                    <Input
+                                        value={manualPassword}
+                                        onChange={(e) => setManualPassword(e.target.value)}
+                                        placeholder="Digite a nova senha..."
+                                    />
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setManualPasswordOpen(false)}>Cancelar</Button>
+                                <Button onClick={handleManualPasswordSubmit} disabled={resetPasswordMutation.isPending || !manualPassword}>
+                                    {resetPasswordMutation.isPending ? "Salvando..." : "Salvar Senha"}
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>Adicionar Novo Usuário</DialogTitle>
@@ -183,32 +260,69 @@ export function UsersManagement() {
                                 </TableCell>
                                 <TableCell><Badge className="bg-green-100 text-green-700 hover:bg-green-100">Ativo</Badge></TableCell>
                                 <TableCell className="text-right">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                            if (confirm("Deseja redefinir a senha deste usuário?")) {
-                                                resetPasswordMutation.mutate(user as any);
-                                            }
-                                        }}
-                                        disabled={resetPasswordMutation.isPending}
-                                    >
-                                        {resetPasswordMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4 text-muted-foreground hover:text-primary" />}
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                                        onClick={() => {
-                                            if (confirm(`Deseja gerar uma nova senha para ${user.full_name} e enviar pelo WhatsApp?`)) {
-                                                resetPasswordMutation.mutate(user as any);
-                                            }
-                                        }}
-                                        disabled={resetPasswordMutation.isPending}
-                                        title="Gerar nova senha e enviar no WhatsApp"
-                                    >
-                                        <MessageCircle className="h-4 w-4" />
-                                    </Button>
+                                    <TooltipProvider>
+                                        <div className="flex justify-end gap-1">
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            if (confirm("Deseja redefinir a senha deste usuário aleatoriamente?")) {
+                                                                resetPasswordMutation.mutate(user as any);
+                                                            }
+                                                        }}
+                                                        disabled={resetPasswordMutation.isPending}
+                                                    >
+                                                        {resetPasswordMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4 text-orange-500" />}
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p>Redefinir Senha (Aleatória)</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                                        onClick={() => {
+                                                            if (confirm(`Deseja gerar uma nova senha para ${user.full_name} e enviar pelo WhatsApp?`)) {
+                                                                resetPasswordMutation.mutate(user as any);
+                                                            }
+                                                        }}
+                                                        disabled={resetPasswordMutation.isPending}
+                                                    >
+                                                        <MessageCircle className="h-4 w-4" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p>Gerar e Enviar no WhatsApp</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setSelectedUserForPassword(user);
+                                                            setManualPassword("");
+                                                            setManualPasswordOpen(true);
+                                                        }}
+                                                    >
+                                                        <Key className="h-4 w-4 text-blue-500" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p>Definir Senha Manualmente</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </div>
+                                    </TooltipProvider>
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -275,6 +389,6 @@ export function UsersManagement() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </div >
     );
 }

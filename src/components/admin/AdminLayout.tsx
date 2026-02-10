@@ -89,11 +89,14 @@ interface AdminLayoutProps {
 import { useQuery } from "@tanstack/react-query";
 import { settingsService } from "@/services/settingsService";
 
+import { ProfileDialog } from "@/components/profile/ProfileDialog";
+
 export function AdminLayout({ children, title, description }: AdminLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [logoError, setLogoError] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const { data: settings } = useQuery({
     queryKey: ["system-settings"],
@@ -221,7 +224,10 @@ export function AdminLayout({ children, title, description }: AdminLayoutProps) 
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 mt-2 rounded-xl bg-sidebar text-sidebar-foreground border-sidebar-border/30">
-              <DropdownMenuItem className="gap-2 focus:bg-sidebar-accent focus:text-sidebar-foreground cursor-pointer">
+              <DropdownMenuItem
+                className="gap-2 focus:bg-sidebar-accent focus:text-sidebar-foreground cursor-pointer"
+                onClick={() => setProfileOpen(true)}
+              >
                 <Settings className="h-4 w-4" /> Perfil de Adm
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-sidebar-border/30" />
@@ -238,6 +244,13 @@ export function AdminLayout({ children, title, description }: AdminLayoutProps) 
           </DropdownMenu>
         </div>
       </aside>
+
+      <ProfileDialog
+        open={profileOpen}
+        onOpenChange={setProfileOpen}
+        userName={admin.name}
+        userEmail={user?.email}
+      />
 
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">

@@ -49,9 +49,12 @@ interface PortalLayoutProps {
   description?: string;
 }
 
+import { ProfileDialog } from "@/components/profile/ProfileDialog";
+
 export function PortalLayout({ children, title, description }: PortalLayoutProps) {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   // Fetch settings dynamically
   const { data: settings } = useQuery({
@@ -262,7 +265,7 @@ export function PortalLayout({ children, title, description }: PortalLayoutProps
                 <DropdownMenuContent align="end" className="w-56 mt-2 rounded-xl border-border/50 backdrop-blur-xl">
                   <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>Meu Perfil</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setProfileOpen(true)}>Meu Perfil / Alterar Senha</DropdownMenuItem>
                   <DropdownMenuItem>Assinatura</DropdownMenuItem>
                   <DropdownMenuItem>Ajuda</DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -280,6 +283,13 @@ export function PortalLayout({ children, title, description }: PortalLayoutProps
           </div>
         </main>
       </div>
+
+      <ProfileDialog
+        open={profileOpen}
+        onOpenChange={setProfileOpen}
+        userName={userData.name}
+        userEmail={userData.email}
+      />
     </div>
   );
 }

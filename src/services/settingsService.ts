@@ -209,8 +209,8 @@ export const settingsService = {
         return { password: tempPassword };
     },
 
-    async resetUserPassword(userId: string, email: string): Promise<{ password: string }> {
-        const newPassword = Math.random().toString(36).slice(-8) + "A1!";
+    async resetUserPassword(userId: string, email: string, customPassword?: string): Promise<{ password: string }> {
+        const newPassword = customPassword || Math.random().toString(36).slice(-8) + "A1!";
 
         const { data, error } = await supabase.functions.invoke("admin-change-password", {
             body: { userId, email, newPassword }

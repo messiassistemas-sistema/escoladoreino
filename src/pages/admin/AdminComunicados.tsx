@@ -2,7 +2,6 @@ import { useState, useRef } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useQuery } from "@tanstack/react-query";
 import { studentsService, Student } from "@/services/studentsService";
@@ -13,6 +12,15 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Send, PauseCircle, PlayCircle, StopCircle, RefreshCw, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
+import { RichTextEditor } from "@/components/ui/RichTextEditor";
+import { Switch } from "@/components/ui/switch";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon, Clock } from "lucide-react";
+import { format, startOfToday } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Input } from "@/components/ui/input";
 
 export default function AdminComunicados() {
     const { toast } = useToast();
@@ -28,6 +36,12 @@ export default function AdminComunicados() {
     const [errorCount, setErrorCount] = useState(0);
     const [currentStudent, setCurrentStudent] = useState<string | null>(null);
     const [logs, setLogs] = useState<string[]>([]);
+
+    // Advanced Configuration
+    const [delaySeconds, setDelaySeconds] = useState(15); // Default 15s
+    const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
+    const [isScheduling, setIsScheduling] = useState(false);
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
     // Refs for controlling the loop
     const shouldStopRef = useRef(false);
@@ -76,7 +90,82 @@ export default function AdminComunicados() {
             return;
         }
 
-        if (!confirm(`Tem certeza que deseja enviar para ${targetStudents.length} alunos? Isso pode levar alguns minutos.`)) {
+        // Handle Scheduling
+        if (isScheduling) {
+            if (!scheduleDate) {
+                toast({ title: "Erro", description: "Selecione uma data e hora para agendar.", variant: "destructive" });
+                return;
+            }
+            if (!confirm(`Confirmar agendamento para ${format(scheduleDate, "PPP 'às' HH:mm", { locale: ptBR })} para ${targetStudents.length} alunos?`)) {
+                return;
+            }
+
+            // Logic for scheduling (DB insertion)
+            setIsSending(true);
+            setProgress(0);
+            setLogs([]);
+            addLog(`📅 Iniciando agendamento para ${format(scheduleDate, "dd/MM/yyyy HH:mm")}...`);
+
+            try {
+                // 1. Create Campaign
+                const { data: campaign, error: campaignError } = await supabase
+                    .from('communication_campaigns')
+                    .insert({
+                        title: `Disparo ${format(new Date(), "dd/MM HH:mm")}`,
+                        message: message,
+                        target_audience: selectedAudience,
+                        target_filter: selectedAudience === 'class' ? selectedClassId : null,
+                        status: 'scheduled',
+                        created_by: (await supabase.auth.getUser()).data.user?.id
+                    })
+                    .select()
+                    .single();
+
+                if (campaignError) throw campaignError;
+                addLog(`✅ Campanha criada: ${campaign.id}`);
+
+                // 2. Prepare Queue Items
+                const queueItems = targetStudents.map(student => ({
+                    campaign_id: campaign.id,
+                    student_name: student.name,
+                    phone: student.phone?.replace(/\D/g, "") || "",
+                    message_body: message.replace(/{nome}/g, student.name.split(" ")[0]).replace(/{name}/g, student.name.split(" ")[0]),
+                    status: 'scheduled',
+                    scheduled_for: scheduleDate.toISOString()
+                }));
+
+                // 3. Insert Queue (Batched)
+                const batchSize = 100;
+                for (let i = 0; i < queueItems.length; i += batchSize) {
+                    const batch = queueItems.slice(i, i + batchSize);
+                    const { error: queueError } = await supabase
+                        .from('communication_queue')
+                        .insert(batch);
+
+                    if (queueError) throw queueError;
+
+                    const currentProgress = Math.round(((i + batch.length) / queueItems.length) * 100);
+                    setProgress(currentProgress);
+                    addLog(`📥 Agendados ${Math.min(i + batch.length, queueItems.length)}/${queueItems.length} mensagens...`);
+                }
+
+                addLog(`✨ Agendamento concluído com sucesso!`);
+                toast({ title: "Agendado!", description: `${queueItems.length} mensagens agendadas para ${format(scheduleDate, "dd/MM HH:mm")}.` });
+
+                // 4. If scheduled for very soon, we rely on the Cron Job (every minute)
+                // Removed explicit invocation to prevent Permisson/CORS issues causing false negatives.
+
+            } catch (error: any) {
+                console.error(error);
+                addLog(`❌ Erro no agendamento: ${error.message}`);
+                toast({ title: "Erro", description: "Falha ao agendar mensagens.", variant: "destructive" });
+            } finally {
+                setIsSending(false);
+            }
+            return;
+        }
+
+        if (!confirm(`Tem certeza que deseja enviar agora para ${targetStudents.length} alunos? O intervalo será de ~${delaySeconds}s.`)) {
             return;
         }
 
@@ -138,10 +227,14 @@ export default function AdminComunicados() {
             const newProgress = Math.round(((i + 1) / targetStudents.length) * 100);
             setProgress(newProgress);
 
-            // Rate Limit Delay (Random between 10s and 15s to look generic)
+            // Rate Limit Delay
             if (i < targetStudents.length - 1) { // Don't wait after last one
-                const waitTime = Math.floor(Math.random() * (15000 - 10000 + 1) + 10000);
-                addLog(`⏳ Aguardando ${Math.round(waitTime / 1000)}s para segurança...`);
+                // Use selected delay as base, add random 20% variance
+                const baseDelay = delaySeconds * 1000;
+                const variance = Math.floor(Math.random() * (baseDelay * 0.2));
+                const waitTime = baseDelay + variance;
+
+                addLog(`⏳ Aguardando ~${Math.round(waitTime / 1000)}s (Config: ${delaySeconds}s)...`);
                 await delay(waitTime);
             }
         }
@@ -222,26 +315,107 @@ export default function AdminComunicados() {
                                 </Badge>
                             </div>
 
+                            {/* Advanced Configuration: Delay & Scheduling */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                                <div className="space-y-4 border p-3 rounded-md bg-muted/10">
+                                    <div className="flex justify-between items-center">
+                                        <Label>Intervalo entre Envios</Label>
+                                        <Badge variant="outline" className="font-mono text-xs">{delaySeconds} segundos</Badge>
+                                    </div>
+                                    <Slider
+                                        value={[delaySeconds]}
+                                        onValueChange={(val) => setDelaySeconds(val[0])}
+                                        max={60}
+                                        min={2}
+                                        step={1}
+                                        disabled={isSending}
+                                        className="py-2"
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        Tempo de espera entre cada mensagem para segurança do número.
+                                    </p>
+                                </div>
+
+                                <div className="space-y-4 border p-3 rounded-md bg-muted/10">
+                                    <div className="flex items-center justify-between">
+                                        <Label htmlFor="schedule-mode">Agendar Envio</Label>
+                                        <Switch
+                                            id="schedule-mode"
+                                            checked={isScheduling}
+                                            onCheckedChange={setIsScheduling}
+                                            disabled={isSending}
+                                        />
+                                    </div>
+
+                                    {isScheduling && (
+                                        <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                                            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant={"outline"}
+                                                        className={`w-full justify-start text-left font-normal ${!scheduleDate && "text-muted-foreground"}`}
+                                                    >
+                                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                                        {scheduleDate ? format(scheduleDate, "PPP 'às' HH:mm", { locale: ptBR }) : <span>Escolha a data</span>}
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0" align="start">
+                                                    <Calendar
+                                                        mode="single"
+                                                        selected={scheduleDate}
+                                                        onSelect={setScheduleDate}
+                                                        initialFocus
+                                                        locale={ptBR}
+                                                    />
+                                                    <div className="p-3 border-t space-y-3">
+                                                        <div className="space-y-1">
+                                                            <Label className="text-xs">Horário</Label>
+                                                            <Input
+                                                                type="time"
+                                                                className="mt-1"
+                                                                value={scheduleDate ? format(scheduleDate, 'HH:mm') : ''}
+                                                                onChange={(e) => {
+                                                                    if (!scheduleDate) return;
+                                                                    const [hours, minutes] = e.target.value.split(':');
+                                                                    const newDate = new Date(scheduleDate);
+                                                                    newDate.setHours(parseInt(hours));
+                                                                    newDate.setMinutes(parseInt(minutes));
+                                                                    setScheduleDate(newDate);
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <Button size="sm" className="w-full" onClick={() => setIsCalendarOpen(false)}>
+                                                            Pronto
+                                                        </Button>
+                                                    </div>
+                                                </PopoverContent>
+                                            </Popover>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+
                             {/* Message Editor */}
                             <div className="space-y-2 flex-1 flex flex-col">
-                                <Label>Mensagem</Label>
-                                <div className="text-xs text-muted-foreground mb-1">
-                                    Variáveis disponíveis: <code className="bg-muted px-1 rounded">{`{nome}`}</code>
+                                <div className="text-xs text-muted-foreground mb-1 flex justify-between">
+                                    <span>Variáveis: <code className="bg-muted px-1 rounded">{`{nome}`}</code></span>
                                 </div>
-                                <Textarea
-                                    className="flex-1 min-h-[150px] resize-none font-sans text-base"
-                                    placeholder="Olá {nome}, temos um comunicado importante..."
+                                <RichTextEditor
                                     value={message}
-                                    onChange={e => setMessage(e.target.value)}
+                                    onChange={setMessage}
+                                    placeholder="Olá {nome}, temos um comunicado importante..."
+                                    className="flex-1"
                                     disabled={isSending}
+                                    label="Mensagem"
                                 />
                             </div>
 
                             {/* Actions */}
                             <div className="pt-4 flex gap-3">
                                 {!isSending ? (
-                                    <Button onClick={handleStartSending} className="w-full bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/20" size="lg" disabled={targetStudents.length === 0}>
-                                        <Send className="mr-2 h-4 w-4" /> Iniciar Disparo
+                                    <Button onClick={handleStartSending} className={`w-full text-white shadow-lg ${isScheduling ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20' : 'bg-green-600 hover:bg-green-700 shadow-green-600/20'}`} size="lg" disabled={targetStudents.length === 0}>
+                                        {isScheduling ? <><Clock className="mr-2 h-4 w-4" /> Agendar Disparo</> : <><Send className="mr-2 h-4 w-4" /> Iniciar Disparo</>}
                                     </Button>
                                 ) : (
                                     <>
