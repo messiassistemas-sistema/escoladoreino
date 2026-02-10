@@ -98,33 +98,31 @@ serve(async (req) => {
             // If user exists
             if (createError.message?.includes("already registered") || createError.status === 422) {
                 isNewUser = false;
-                console.log("User already exists.");
+                console.log("User already exists. Finding user ID to force password reset...");
 
-                if (resend) {
-                    console.log("Resend requested. Finding user ID and resetting password...");
-                    // Locate user ID via RPC
-                    const { data: existingUserId, error: rpcError } = await supabaseAdmin.rpc('get_user_id_by_email', { email: student.email });
+                // Locate user ID via RPC
+                const { data: existingUserId, error: rpcError } = await supabaseAdmin.rpc('get_user_id_by_email', { email: student.email });
 
-                    if (rpcError || !existingUserId) {
-                        // Fallback: If RPC fails (e.g. not migrated), we can't reset safely without ID.
-                        console.warn("Could not find user ID via RPC to reset password.", rpcError);
-                        // We will proceed without resetting password, just resending email saying "Use existing creds" 
-                        // UNLESS we want to throw error. But better to be graceful.
-                    } else {
-                        authUserId = existingUserId;
-                        // Reset password
-                        const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-                            authUserId,
-                            { password: tempPassword }
-                        );
-                        if (updateError) {
-                            console.error("Failed to reset password:", updateError);
-                            throw updateError;
-                        }
-                        console.log("Password reset successfully.");
-                        // Treat as if we generated a new password (because we did)
-                        isNewUser = true; // Effectively new credentials for the user
+                if (rpcError || !existingUserId) {
+                    console.warn("Could not find user ID via RPC. User might not get new credentials.", rpcError);
+                    // If we can't find the ID, we can't reset. We keep isNewUser = false
+                    // and the message will say "use habitual credentials".
+                } else {
+                    authUserId = existingUserId;
+                    // Force Reset password
+                    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+                        authUserId,
+                        { password: tempPassword }
+                    );
+
+                    if (updateError) {
+                        console.error("Failed to reset password:", updateError);
+                        throw updateError;
                     }
+
+                    console.log("Password force-reset successfully.");
+                    // Treat as new user for messaging purposes
+                    isNewUser = true;
                 }
             } else {
                 throw createError;
