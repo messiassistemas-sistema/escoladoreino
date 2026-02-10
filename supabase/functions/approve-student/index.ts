@@ -21,18 +21,28 @@ serve(async (req) => {
 
     try {
         // 1. Init Supabase Clients
+        const authHeader = req.headers.get("Authorization");
+        console.log("Auth header present:", !!authHeader ? "Yes (masked: " + authHeader.substring(0, 15) + "...)" : "No");
+
         // Client for verifying the caller (Admin)
         const supabaseClient = createClient(
             Deno.env.get("SUPABASE_URL") ?? "",
             Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-            { global: { headers: { Authorization: req.headers.get("Authorization")! } } }
+            { global: { headers: { Authorization: authHeader || "" } } }
         );
 
         // check if user is admin
         const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+
         if (authError || !user) {
-            throw new Error("Unauthorized: Caller must be logged in.");
+            console.error("Authentication failed:", authError?.message || "User not found");
+            return new Response(
+                JSON.stringify({ success: false, error: "Unauthorized: Caller must be logged in.", details: authError }),
+                { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
         }
+
+        console.log("Authenticated user:", user.email);
 
         // You might want to check for specific 'admin' role metadata here if your app uses it
         // const isMember = user.user_metadata?.role === 'admin' || user.user_metadata?.role === 'member'; 

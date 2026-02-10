@@ -15,8 +15,13 @@ serve(async (req) => {
     try {
         console.log("Function invoked");
         const authHeader = req.headers.get('Authorization');
+        console.log("Auth header present:", !!authHeader ? "Yes (masked: " + authHeader.substring(0, 15) + "...)" : "No");
+
         if (!authHeader) {
-            throw new Error("Missing Authorization header");
+            return new Response(
+                JSON.stringify({ error: 'Unauthorized: Missing Authorization header' }),
+                { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
         }
 
         const supabaseClient = createClient(
@@ -28,14 +33,13 @@ serve(async (req) => {
         const authResponse = await supabaseClient.auth.getUser()
         const user = authResponse.data?.user;
         const userError = authResponse.error;
-        console.log("Auth User:", user?.id, "Error:", userError);
 
         if (userError || !user) {
-            console.error("Unauthorized access attempt - proceeding for debug:", userError);
-            // return new Response(
-            //    JSON.stringify({ error: 'Unauthorized', details: userError }),
-            //    { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            // )
+            console.error("Unauthorized access attempt:", userError);
+            return new Response(
+                JSON.stringify({ error: 'Unauthorized', details: userError }),
+                { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
         }
 
         const body = await req.json()
