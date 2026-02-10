@@ -8,7 +8,8 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "gen:types": "npx supabase gen types typescript --project-id zlamplvubedftzgqrwcf > src/integrations/supabase/types.ts"
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.8",

@@ -21,6 +21,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -82,7 +83,9 @@ export default function AdminAulas() {
     mode: 'presencial' as 'presencial' | 'online',
     status: 'agendada' as 'agendada' | 'realizada' | 'cancelada',
     recording_link: "",
-    release_for_presencial: false
+    release_for_presencial: false,
+    topic: "",
+    description: ""
   });
 
   const { data: aulas = [], isLoading } = useQuery({
@@ -113,6 +116,8 @@ export default function AdminAulas() {
         status: editingLesson.status,
         recording_link: editingLesson.recording_link || "",
         release_for_presencial: editingLesson.release_for_presencial || false,
+        topic: editingLesson.topic || "",
+        description: editingLesson.description || ""
       });
     } else {
       setFormData({
@@ -126,6 +131,8 @@ export default function AdminAulas() {
         status: 'agendada',
         recording_link: "",
         release_for_presencial: false,
+        topic: "",
+        description: ""
       });
     }
   }, [editingLesson]);
@@ -338,6 +345,23 @@ export default function AdminAulas() {
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
+                  <Label>Tema da Aula / Conteúdo</Label>
+                  <Input
+                    placeholder="Ex: A Trindade, Cristologia, etc."
+                    value={formData.topic}
+                    onChange={(e) => setFormData(p => ({ ...p, topic: e.target.value }))}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Descrição / Resumo da Aula</Label>
+                  <Textarea
+                    placeholder="Resumo do que será abordado, leituras, etc."
+                    value={formData.description}
+                    onChange={(e) => setFormData(p => ({ ...p, description: e.target.value }))}
+                    className="h-24"
+                  />
+                </div>
+                <div className="grid gap-2">
                   <Label>Turma</Label>
                   <Select
                     value={formData.class_name}
@@ -494,12 +518,27 @@ export default function AdminAulas() {
                     <TableRow key={aula.id}>
                       <TableCell>
                         <div>
-                          <p className="font-medium">
-                            {subjects.find(s => s.id === aula.subject_id)?.name || "Duração não definida"}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {aula.class_name}
-                          </p>
+                          {aula.topic ? (
+                            <>
+                              <p className="font-bold text-base text-primary">
+                                {aula.topic}
+                              </p>
+                              <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                                {subjects.find(s => s.id === aula.subject_id)?.name || "Disciplina não definida"}
+                              </p>
+                            </>
+                          ) : (
+                            <p className="font-medium text-base">
+                              {subjects.find(s => s.id === aula.subject_id)?.name || "Disciplina não definida"}
+                            </p>
+                          )}
+
+                          {aula.class_name &&
+                            subjects.find(s => s.id === aula.subject_id)?.name?.trim() !== aula.class_name?.replace(/\.$/, "").trim() && (
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {aula.class_name}
+                              </p>
+                            )}
                         </div>
                       </TableCell>
                       <TableCell>{aula.teacher_name}</TableCell>

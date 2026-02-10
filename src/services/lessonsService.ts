@@ -1,23 +1,16 @@
 import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
 
-export interface Lesson {
-    id: string;
-    subject_id: string;
-    teacher_name?: string;
-    class_name?: string;
-    date: string;
-    time: string;
-    location: string | null;
-    mode: 'presencial' | 'online';
+type LessonRow = Database['public']['Tables']['lessons']['Row'];
+
+export interface Lesson extends Omit<LessonRow, 'mode' | 'status'> {
+    mode: 'presencial' | 'online'; // Enforcing strict types for app logic
     status: 'agendada' | 'realizada' | 'cancelada';
-    created_at?: string;
-    updated_at?: string;
+
     // Join data
     subject?: {
         name: string;
     };
-    recording_link?: string;
-    release_for_presencial?: boolean;
 }
 
 export const lessonsService = {

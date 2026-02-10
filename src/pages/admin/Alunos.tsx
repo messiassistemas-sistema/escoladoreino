@@ -12,6 +12,9 @@ import {
   CheckCircle,
   Ban,
   MessageCircle,
+  CalendarClock,
+  Send,
+  Loader2,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -544,6 +547,11 @@ export default function AdminAlunos() {
                               {aluno.email}
                             </p>
                             <div className="flex gap-2 mt-1">
+                              {aluno.credentials_sent_at && (
+                                <Badge variant="outline" className="text-[10px] h-5 gap-1 border-green-200 bg-green-50 text-green-700" title={`Credenciais enviadas em: ${new Date(aluno.credentials_sent_at).toLocaleString()}`}>
+                                  <CheckCircle className="h-3 w-3" /> Credenciais Enviadas
+                                </Badge>
+                              )}
                               {aluno.modality === 'online' && (
                                 <Badge variant="secondary" className="text-[10px] h-5 bg-blue-100 text-blue-700 hover:bg-blue-200">
                                   ONLINE
@@ -660,7 +668,24 @@ export default function AdminAlunos() {
                               }
                             }}>
                               <Mail className="h-4 w-4" />
-                              Enviar E-mail
+                              Enviar E-mail (Apenas Mensagem)
+                            </DropdownMenuItem>
+
+                            {/* Reenviar Credenciais (Reset) */}
+                            <DropdownMenuItem className="gap-2 text-blue-600" onClick={async () => {
+                              if (window.confirm(`Isso irá resetar a senha de ${aluno.name} e enviar novas credenciais por E-mail e WhatsApp. Deseja continuar?`)) {
+                                try {
+                                  toast({ title: "Processando...", description: "Gerando novas credenciais e enviando..." });
+                                  await studentsService.approveStudent(aluno.id, true); // true = resend/force reset
+                                  toast({ title: "Sucesso!", description: "Novas credenciais enviadas." });
+                                  queryClient.invalidateQueries({ queryKey: ["students"] });
+                                } catch (e: any) {
+                                  toast({ title: "Erro", description: e.message, variant: "destructive" });
+                                }
+                              }
+                            }}>
+                              <Send className="h-4 w-4" />
+                              Reenviar Credenciais (Reset)
                             </DropdownMenuItem>
                             {aluno.status === 'ativo' ? (
                               <DropdownMenuItem className="gap-2 text-orange-600" onClick={() => {

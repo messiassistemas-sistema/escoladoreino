@@ -13,6 +13,7 @@ export interface Student {
     modality: 'presencial' | 'online';
     created_at?: string;
     updated_at?: string;
+    credentials_sent_at?: string | null;
 }
 
 export const studentsService = {
@@ -135,6 +136,25 @@ export const studentsService = {
             console.error("Erro ao excluir aluno:", error);
             throw error;
         }
+    },
+
+    async approveStudent(id: string, resend: boolean = false): Promise<void> {
+        console.log("Approving/Resending student via Edge Function:", id, resend);
+        const { data, error } = await supabase.functions.invoke("approve-student", {
+            body: { student_id: id, resend }
+        });
+
+        if (error) {
+            console.error("Erro na função approve-student:", error);
+            throw error;
+        }
+
+        if (data && !data.success) {
+            console.error("Erro retornado pela função:", data.error);
+            throw new Error(data.error || "Erro ao aprovar aluno");
+        }
+
+        console.log("Student process result:", data);
     },
     async getStudentByEmail(email: string): Promise<Student | null> {
         const { data, error } = await supabase

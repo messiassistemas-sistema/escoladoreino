@@ -9,6 +9,7 @@ import {
     Mail,
     CheckCircle,
     UserCheck,
+    Loader2,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -76,9 +77,30 @@ export default function PendingStudents() {
         return isPending && matchesSearch;
     });
 
-    const handleApprove = (student: Student) => {
-        if (window.confirm(`Deseja aprovar a matrícula de ${student.name}?`)) {
-            updateMutation.mutate({ id: student.id, data: { status: 'ativo' } });
+    const [approvingId, setApprovingId] = useState<string | null>(null);
+
+    const handleApprove = async (student: Student) => {
+        if (!window.confirm(`Deseja aprovar a matrícula de ${student.name}? Isso enviará as credenciais de acesso para o aluno.`)) {
+            return;
+        }
+
+        setApprovingId(student.id);
+        try {
+            await studentsService.approveStudent(student.id);
+            toast({
+                title: "Aluno aprovado!",
+                description: "Credenciais de acesso enviadas por E-mail e WhatsApp."
+            });
+            queryClient.invalidateQueries({ queryKey: ["students"] });
+        } catch (error) {
+            console.error(error);
+            toast({
+                title: "Erro ao aprovar",
+                description: "Não foi possível aprovar o aluno. Tente novamente.",
+                variant: "destructive"
+            });
+        } finally {
+            setApprovingId(null);
         }
     };
 
@@ -178,8 +200,13 @@ export default function PendingStudents() {
                                                             size="sm"
                                                             className="bg-green-600 hover:bg-green-700 text-white gap-2"
                                                             onClick={() => handleApprove(aluno)}
+                                                            disabled={approvingId === aluno.id}
                                                         >
-                                                            <CheckCircle className="h-4 w-4" />
+                                                            {approvingId === aluno.id ? (
+                                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                            ) : (
+                                                                <CheckCircle className="h-4 w-4" />
+                                                            )}
                                                             Aprovar
                                                         </Button>
 
@@ -253,12 +280,14 @@ export default function PendingStudents() {
                             <Button variant="ghost" onClick={() => setIsDetailsOpen(false)}>Fechar</Button>
                             {detailsStudent && (
                                 <Button
-                                    className="bg-green-600 hover:bg-green-700"
+                                    className="bg-green-600 hover:bg-green-700 gap-2"
                                     onClick={() => {
                                         handleApprove(detailsStudent);
                                         setIsDetailsOpen(false);
                                     }}
+                                    disabled={approvingId === detailsStudent.id}
                                 >
+                                    {approvingId === detailsStudent.id && <Loader2 className="h-4 w-4 animate-spin" />}
                                     Aprovar Matrícula
                                 </Button>
                             )}

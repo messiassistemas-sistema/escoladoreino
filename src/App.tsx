@@ -1,5 +1,5 @@
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster as SonnerToaster, toast as sonnerToast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -49,7 +49,23 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Login from "./pages/auth/Login";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+    mutations: {
+      onError: (error: any) => {
+        // Global error handler for mutations
+        console.error("Mutation error:", error);
+        sonnerToast.error("Ocorreu um erro", {
+          description: error.message || "Falha ao realizar operação. Tente novamente.",
+        });
+      },
+    },
+  },
+});
 
 // Theme initialization
 function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -66,6 +82,7 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
 }
 
 import { FaviconUpdater } from "@/components/layout/FaviconUpdater";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -74,57 +91,59 @@ const App = () => (
         <TooltipProvider>
           <FaviconUpdater />
           <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<Index />} />
-              <Route path="/sobre" element={<Sobre />} />
-              <Route path="/cursos" element={<Cursos />} />
-              <Route path="/contato" element={<Contato />} />
-              <Route path="/matricula" element={<Matricula />} />
-              <Route path="/status-matricula" element={<StatusMatricula />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
+          <SonnerToaster />
+          <ErrorBoundary>
+            <BrowserRouter>
+              <Routes>
+                {/* Public Routes */}
+                <Route path="/" element={<Index />} />
+                <Route path="/sobre" element={<Sobre />} />
+                <Route path="/cursos" element={<Cursos />} />
+                <Route path="/contato" element={<Contato />} />
+                <Route path="/matricula" element={<Matricula />} />
+                <Route path="/status-matricula" element={<StatusMatricula />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
 
-              {/* Protected Portal Routes */}
-              <Route element={<ProtectedRoute />}>
-                <Route path="/portal" element={<PortalDashboard />} />
-                <Route path="/portal/notas" element={<PortalNotas />} />
-                <Route path="/portal/presenca" element={<PortalPresenca />} />
-                <Route path="/portal/calendario" element={<PortalCalendario />} />
-                <Route path="/portal/materiais" element={<PortalMateriais />} />
-                <Route path="/portal/avisos" element={<PortalAvisos />} />
-                <Route path="/portal/ajuda" element={<PortalHelpCenter />} />
-              </Route>
+                {/* Protected Portal Routes */}
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/portal" element={<PortalDashboard />} />
+                  <Route path="/portal/notas" element={<PortalNotas />} />
+                  <Route path="/portal/presenca" element={<PortalPresenca />} />
+                  <Route path="/portal/calendario" element={<PortalCalendario />} />
+                  <Route path="/portal/materiais" element={<PortalMateriais />} />
+                  <Route path="/portal/avisos" element={<PortalAvisos />} />
+                  <Route path="/portal/ajuda" element={<PortalHelpCenter />} />
+                </Route>
 
-              {/* Protected Admin Routes */}
-              <Route element={<ProtectedRoute adminOnly />}>
-                <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="/admin/turmas" element={<AdminTurmas />} />
-                <Route path="/admin/alunos" element={<AdminAlunos />} />
-                <Route path="/admin/matriculas-pendentes" element={<AdminPendingStudents />} />
-                <Route path="/admin/professores" element={<AdminProfessores />} />
-                <Route path="/admin/disciplinas" element={<AdminDisciplinas />} />
-                <Route path="/admin/aulas" element={<AdminAulas />} />
-                <Route path="/admin/presenca" element={<AdminPresenca />} />
-                <Route path="/admin/notas" element={<AdminNotas />} />
-                <Route path="/admin/materiais" element={<AdminMateriais />} />
-                <Route path="/admin/avisos" element={<AdminAvisos />} />
-                <Route path="/admin/site" element={<AdminEditorSite />} />
-                <Route path="/admin/pagamentos" element={<AdminPagamentos />} />
-                <Route path="/admin/usuarios" element={<AdminUsuarios />} />
-                <Route path="/admin/ajuda" element={<AdminHelpCenter />} />
+                {/* Protected Admin Routes */}
+                <Route element={<ProtectedRoute adminOnly />}>
+                  <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/admin/turmas" element={<AdminTurmas />} />
+                  <Route path="/admin/alunos" element={<AdminAlunos />} />
+                  <Route path="/admin/matriculas-pendentes" element={<AdminPendingStudents />} />
+                  <Route path="/admin/professores" element={<AdminProfessores />} />
+                  <Route path="/admin/disciplinas" element={<AdminDisciplinas />} />
+                  <Route path="/admin/aulas" element={<AdminAulas />} />
+                  <Route path="/admin/presenca" element={<AdminPresenca />} />
+                  <Route path="/admin/notas" element={<AdminNotas />} />
+                  <Route path="/admin/materiais" element={<AdminMateriais />} />
+                  <Route path="/admin/avisos" element={<AdminAvisos />} />
+                  <Route path="/admin/site" element={<AdminEditorSite />} />
+                  <Route path="/admin/pagamentos" element={<AdminPagamentos />} />
+                  <Route path="/admin/usuarios" element={<AdminUsuarios />} />
+                  <Route path="/admin/ajuda" element={<AdminHelpCenter />} />
 
-                <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
-                <Route path="/admin/mensagens" element={<AdminMensagens />} />
-                <Route path="/admin/comunicados" element={<AdminComunicados />} />
-              </Route>
+                  <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
+                  <Route path="/admin/mensagens" element={<AdminMensagens />} />
+                  <Route path="/admin/comunicados" element={<AdminComunicados />} />
+                </Route>
 
-              {/* Catch-all */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
+                {/* Catch-all */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </ErrorBoundary>
         </TooltipProvider>
       </ThemeProvider>
     </AuthProvider>

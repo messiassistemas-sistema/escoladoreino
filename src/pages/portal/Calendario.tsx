@@ -20,9 +20,12 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { lessonsService } from "@/services/lessonsService";
+import { LessonDetailsDialog } from "@/components/portal/LessonDetailsDialog";
 
 export default function PortalCalendario() {
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const [selectedLesson, setSelectedLesson] = useState<any>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   const { data: lessons = [], isLoading } = useQuery({
     queryKey: ['lessons'],
@@ -159,9 +162,21 @@ export default function PortalCalendario() {
                           <div className="w-full sm:w-2 bg-primary transition-all group-hover:w-3" />
                           <div className="flex-1 p-6 flex items-center justify-between gap-6">
                             <div className="space-y-3">
-                              <div className="flex items-center gap-2">
-                                <h4 className="font-display text-xl font-bold group-hover:text-primary transition-colors">{aula.subject?.name || "Aula"}</h4>
-                                <Badge variant="outline" className="text-[9px] uppercase font-black tracking-widest px-1.5 h-4 border-primary/20 text-primary">{aula.mode}</Badge>
+                              <div className="space-y-1">
+                                {aula.topic && (
+                                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 block">
+                                    {aula.subject?.name || "Disciplina"}
+                                  </span>
+                                )}
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-display text-xl font-bold group-hover:text-primary transition-colors leading-tight">
+                                    {aula.topic || aula.subject?.name || "Aula"}
+                                  </h4>
+                                  <Badge variant="outline" className="text-[9px] uppercase font-black tracking-widest px-1.5 h-4 border-primary/20 text-primary shrink-0">{aula.mode}</Badge>
+                                </div>
+                                {(!aula.topic && aula.class_name && aula.subject?.name?.trim() !== aula.class_name?.replace(/\.$/, "").trim()) && (
+                                  <p className="text-xs text-muted-foreground font-medium">{aula.class_name}</p>
+                                )}
                               </div>
                               <div className="flex flex-wrap items-center gap-6">
                                 <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
@@ -203,6 +218,16 @@ export default function PortalCalendario() {
                                   Ver Gravação
                                 </Button>
                               )}
+                            <Button
+                              variant="outline"
+                              className="hidden sm:flex rounded-xl font-bold border-primary/20 text-primary hover:bg-primary/5 transition-all ml-2"
+                              onClick={() => {
+                                setSelectedLesson(aula);
+                                setIsDetailsOpen(true);
+                              }}
+                            >
+                              Ver Detalhes
+                            </Button>
                           </div>
                         </div>
                       </CardContent>
@@ -243,14 +268,25 @@ export default function PortalCalendario() {
                       "group flex items-center gap-6 rounded-2xl bg-background/50 border border-border/50 p-4 transition-all hover:bg-white hover:shadow-card hover:border-transparent cursor-pointer",
                       isToday && "ring-2 ring-primary ring-offset-4 ring-offset-background"
                     )}
+                    onClick={() => {
+                      setSelectedLesson(aula);
+                      setIsDetailsOpen(true);
+                    }}
                   >
                     <div className="flex h-12 w-12 flex-col items-center justify-center rounded-xl bg-primary/5 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
                       <span className="text-sm font-black leading-none">{aulaDate.getDate()}</span>
                       <span className="text-[8px] font-black uppercase tracking-widest">{aulaDate.toLocaleDateString("pt-BR", { month: "short" })}</span>
                     </div>
 
-                    <div className="flex-1 overflow-hidden">
-                      <h4 className="font-bold text-sm truncate group-hover:text-primary transition-colors">{aula.subject?.name || "Aula"}</h4>
+                    <div className="flex-1 overflow-hidden space-y-0.5">
+                      {aula.topic && (
+                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 block truncate">
+                          {aula.subject?.name || "Disciplina"}
+                        </span>
+                      )}
+                      <h4 className="font-bold text-sm truncate group-hover:text-primary transition-colors">
+                        {aula.topic || aula.subject?.name || "Aula"}
+                      </h4>
                       <div className="flex items-center gap-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
                         <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {aula.time}</span>
                         <span className="flex items-center gap-1"><User className="h-3 w-3" /> {aula.teacher_name}</span>
@@ -267,6 +303,11 @@ export default function PortalCalendario() {
           </motion.div>
         </div>
       </motion.div>
-    </PortalLayout>
+      <LessonDetailsDialog
+        lesson={selectedLesson}
+        open={isDetailsOpen}
+        onOpenChange={setIsDetailsOpen}
+      />
+    </PortalLayout >
   );
 }

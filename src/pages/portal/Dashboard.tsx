@@ -24,9 +24,13 @@ import { useQuery } from "@tanstack/react-query";
 import { studentsService } from "@/services/studentsService";
 import { lessonsService } from "@/services/lessonsService";
 import { announcementsService } from "@/services/announcementsService";
+import { LessonDetailsDialog } from "@/components/portal/LessonDetailsDialog";
+import { useState } from "react";
 
 export default function PortalDashboard() {
   const { user } = useAuth();
+  const [selectedLesson, setSelectedLesson] = useState<any>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   const parseLocalDate = (dateStr: string) => {
     const [year, month, day] = dateStr.split('-').map(Number);
@@ -246,13 +250,21 @@ export default function PortalDashboard() {
                       <CardContent className="flex flex-1 flex-col justify-between p-6">
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground/60">{aula.class_name || "Turma Geral"}</span>
-                            <div className="flex items-center gap-1.5 text-xs font-bold text-primary">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                              {aula.topic
+                                ? (aula.subject?.name || "Disciplina")
+                                : (aula.class_name && aula.subject?.name?.trim() !== aula.class_name?.replace(/\.$/, "").trim()
+                                  ? aula.class_name
+                                  : "")}
+                            </span>
+                            <div className="flex items-center gap-1.5 text-[10px] font-black text-primary uppercase tracking-widest">
                               <Calendar className="h-3.5 w-3.5" />
                               {parseLocalDate(aula.date).toLocaleDateString("pt-BR", { day: '2-digit', month: 'short' }).toUpperCase()}
                             </div>
                           </div>
-                          <h4 className="font-display text-xl font-bold leading-tight group-hover:text-primary transition-colors">{aula.subject?.name || "Disciplina não definida"}</h4>
+                          <h4 className="font-display text-xl font-bold leading-tight group-hover:text-primary transition-colors">
+                            {aula.topic || aula.subject?.name || "Disciplina não definida"}
+                          </h4>
                           <p className="text-sm font-medium text-muted-foreground">Horário: {aula.time}</p>
                         </div>
 
@@ -274,7 +286,16 @@ export default function PortalDashboard() {
                                   Ver Gravação
                                 </Button>
                               )}
-                            <Button size="sm" className="rounded-xl shadow-lg shadow-primary/10">Ver Detalhes</Button>
+                            <Button
+                              size="sm"
+                              className="rounded-xl shadow-lg shadow-primary/10"
+                              onClick={() => {
+                                setSelectedLesson(aula);
+                                setIsDetailsOpen(true);
+                              }}
+                            >
+                              Ver Detalhes
+                            </Button>
                           </div>
                         </div>
                       </CardContent>
@@ -389,6 +410,12 @@ export default function PortalDashboard() {
           </div>
         </motion.div>
       </motion.div>
+
+      <LessonDetailsDialog
+        lesson={selectedLesson}
+        open={isDetailsOpen}
+        onOpenChange={setIsDetailsOpen}
+      />
     </PortalLayout>
   );
 }
