@@ -146,6 +146,20 @@ export function RichTextEditor({ value, onChange, disabled, placeholder, classNa
                             </div>
                         </PopoverContent>
                     </Popover>
+
+                    <div className="w-px h-4 bg-border mx-1" />
+
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                        onClick={() => insertText("{nome}")}
+                        title="Inserir nome do aluno"
+                        type="button"
+                        disabled={disabled}
+                    >
+                        {`{nome}`}
+                    </Button>
                 </div>
 
                 {/* Text Area */}
