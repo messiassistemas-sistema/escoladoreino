@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
@@ -13,13 +14,20 @@ serve(async (req) => {
 
     try {
         console.log("Function invoked");
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader) {
+            throw new Error("Missing Authorization header");
+        }
+
         const supabaseClient = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-            { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+            { global: { headers: { Authorization: authHeader } } }
         )
 
-        const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
+        const authResponse = await supabaseClient.auth.getUser()
+        const user = authResponse.data?.user;
+        const userError = authResponse.error;
         console.log("Auth User:", user?.id, "Error:", userError);
 
         if (userError || !user) {
@@ -52,7 +60,7 @@ serve(async (req) => {
         if (!targetUserId && email) {
             console.log("Looking up user by email:", email);
             // Use RPC to get user ID by email securely
-            const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc('get_user_id_by_email', { email_input: email });
+            const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc('get_user_id_by_email', { email: email });
             console.log("RPC Result:", rpcData, "RPC Error:", rpcError);
 
             if (rpcData) {
