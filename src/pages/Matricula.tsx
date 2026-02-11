@@ -84,6 +84,26 @@ export default function Matricula() {
       return;
     }
 
+    const cleanPhone = formData.telefone.replace(/\D/g, "");
+    if (cleanPhone.length !== 11) {
+      toast({
+        title: "Telefone inválido",
+        description: "O telefone deve ter 11 dígitos (DDD + número).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const cleanCpf = formData.cpf.replace(/\D/g, "");
+    if (cleanCpf.length !== 11) {
+      toast({
+        title: "CPF inválido",
+        description: "O CPF deve ter 11 dígitos.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -98,7 +118,8 @@ export default function Matricula() {
         class_name: selectedCourseData?.title || "Turma 2025.1",
         status: 'pendente',
         attendance_rate: 0,
-        average_grade: 0
+        average_grade: 0,
+        modality: 'online'
       });
 
       // 2. Create Asaas Customer
@@ -108,7 +129,7 @@ export default function Matricula() {
       const customer = await asaasService.createCustomer({
         name: formData.nome,
         email: formData.email,
-        cpfCnpj: cleanCpf || "00000000000", // Fallback for sandbox if empty, but usually required
+        cpfCnpj: cleanCpf,
         mobilePhone: cleanPhone,
         externalReference: formData.email
       });
@@ -314,7 +335,7 @@ export default function Matricula() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="cpf">CPF (opcional)</Label>
+                  <Label htmlFor="cpf">CPF *</Label>
                   <Input
                     id="cpf"
                     name="cpf"
@@ -326,6 +347,7 @@ export default function Matricula() {
                         cpf: formatCPF(e.target.value),
                       }))
                     }
+                    required
                   />
                   <p className="text-xs text-muted-foreground">
                     Usado apenas para emissão de nota fiscal e certificado.
