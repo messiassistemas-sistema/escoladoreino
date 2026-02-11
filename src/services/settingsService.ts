@@ -72,7 +72,7 @@ export const settingsService = {
                 school_name: "Escola do Reino",
                 cnpj: null,
                 school_description: null,
-                contact_email: "contato@escoladoreino.com.br",
+                contact_email: "contato@escoladoreino.site",
                 contact_phone: "(11) 99999-9999",
                 address: "Rua da Esperança, 123, Centro, Cidade - UF",
                 min_grade: 7,

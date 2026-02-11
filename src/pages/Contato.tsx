@@ -34,7 +34,7 @@ export default function Contato() {
   });
 
   const contactInfo = {
-    email: settings?.contact_email || "contato@escoladoreino.com.br",
+    email: settings?.contact_email || "contato@escoladoreino.site",
     phone: settings?.contact_phone || "(11) 99999-9999",
     address: settings?.address || "Rua da Esperança, 123, Centro, Cidade - UF"
   };

@@ -56,6 +56,7 @@ export function UsersManagement() {
     const [manualPasswordOpen, setManualPasswordOpen] = useState(false);
     const [selectedUserForPassword, setSelectedUserForPassword] = useState<any>(null);
     const [manualPassword, setManualPassword] = useState("");
+    const [isResendingOnly, setIsResendingOnly] = useState(false);
 
     const { data: users = [], isLoading } = useQuery({
         queryKey: ["admin-users"],
@@ -105,16 +106,15 @@ export function UsersManagement() {
     const handleManualPasswordSubmit = () => {
         if (!selectedUserForPassword || !manualPassword) return;
 
-        // We override the service call slightly here or we assume the service supports passing a password?
-        // Let's check settingsService.resetUserPassword. 
-        // It generates a random password internally: const newPassword = Math.random().toString(36).slice(-8) + "A1!";
-        // We need to UPDATE settingsService to accept an optional password.
+        if (isResendingOnly) {
+            // Apenas abre o WhatsApp com a senha digitada, sem salvar no banco
+            const text = `Olá ${selectedUserForPassword.full_name}, segue seu acesso ao sistema Escola do Reino:\n\n*Login:* ${selectedUserForPassword.email}\n*Senha:* ${manualPassword}\n\nAcesse em: https://escoladoreino.site`;
+            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+            setManualPasswordOpen(false);
+            setManualPassword("");
+            return;
+        }
 
-        // Since I cannot change settingsService in this same tool call easily without risk, I will assume I will update it next.
-        // For now, I'll pass it as a second argument (which TS might complain about until I fix it).
-        // Actually, let's call the mutation with extra data if possible, or create a new mutation.
-
-        // Better approach: Update the mutation implementation to look for a custom password in variables
         manualPasswordMutation.mutate({
             user: selectedUserForPassword,
             password: manualPassword
@@ -146,7 +146,7 @@ export function UsersManagement() {
 
     const sendToWhatsapp = () => {
         if (!activeCredentials) return;
-        const text = `Olá ${activeCredentials.name}, segue seu acesso ao sistema Escola do Reino:\n\n*Login:* ${activeCredentials.email}\n*Senha:* ${activeCredentials.password}\n\nAcesse em: https://escoladoreino.com.br`;
+        const text = `Olá ${activeCredentials.name}, segue seu acesso ao sistema Escola do Reino:\n\n*Login:* ${activeCredentials.email}\n*Senha:* ${activeCredentials.password}\n\nAcesse em: https://escoladoreino.site`;
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     };
 
@@ -162,9 +162,13 @@ export function UsersManagement() {
                     <Dialog open={manualPasswordOpen} onOpenChange={setManualPasswordOpen}>
                         <DialogContent>
                             <DialogHeader>
-                                <DialogTitle>Definir Senha Manualmente</DialogTitle>
+                                <DialogTitle>
+                                    {isResendingOnly ? "Enviar Acesso via WhatsApp" : "Definir Senha Manualmente"}
+                                </DialogTitle>
                                 <DialogDescription>
-                                    Defina uma senha específica para {selectedUserForPassword?.full_name}.
+                                    {isResendingOnly
+                                        ? `Informe a senha atual de ${selectedUserForPassword?.full_name} para enviar.`
+                                        : `Defina uma nova senha para ${selectedUserForPassword?.full_name} no sistema.`}
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4 py-4">
@@ -173,14 +177,16 @@ export function UsersManagement() {
                                     <Input
                                         value={manualPassword}
                                         onChange={(e) => setManualPassword(e.target.value)}
-                                        placeholder="Digite a nova senha..."
+                                        placeholder={isResendingOnly ? "Digite a senha do usuário..." : "Digite a nova senha..."}
                                     />
                                 </div>
                             </div>
                             <DialogFooter>
                                 <Button variant="outline" onClick={() => setManualPasswordOpen(false)}>Cancelar</Button>
                                 <Button onClick={handleManualPasswordSubmit} disabled={resetPasswordMutation.isPending || !manualPassword}>
-                                    {resetPasswordMutation.isPending ? "Salvando..." : "Salvar Senha"}
+                                    {isResendingOnly
+                                        ? "Abrir WhatsApp"
+                                        : (resetPasswordMutation.isPending ? "Salvando..." : "Salvar Senha")}
                                 </Button>
                             </DialogFooter>
                         </DialogContent>
@@ -289,9 +295,10 @@ export function UsersManagement() {
                                                         size="sm"
                                                         className="text-green-600 hover:text-green-700 hover:bg-green-50"
                                                         onClick={() => {
-                                                            if (confirm(`Deseja gerar uma nova senha para ${user.full_name} e enviar pelo WhatsApp?`)) {
-                                                                resetPasswordMutation.mutate(user as any);
-                                                            }
+                                                            setSelectedUserForPassword(user);
+                                                            setIsResendingOnly(true);
+                                                            setManualPassword("");
+                                                            setManualPasswordOpen(true);
                                                         }}
                                                         disabled={resetPasswordMutation.isPending}
                                                     >
@@ -299,7 +306,7 @@ export function UsersManagement() {
                                                     </Button>
                                                 </TooltipTrigger>
                                                 <TooltipContent>
-                                                    <p>Gerar e Enviar no WhatsApp</p>
+                                                    <p>Enviar Senha no WhatsApp</p>
                                                 </TooltipContent>
                                             </Tooltip>
 

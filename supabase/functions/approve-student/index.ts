@@ -170,7 +170,7 @@ serve(async (req) => {
                     "Authorization": `Bearer ${resendApiKey}`,
                 },
                 body: JSON.stringify({
-                    from: "Escola do Reino <nao-responda@escoladoreino.com.br>",
+                    from: "Escola do Reino <nao-responda@escoladoreino.site>",
                     to: [student.email],
                     subject: resend ? "Novas Credenciais de Acesso - Escola do Reino" : "Acesso ao Portal do Aluno - Escola do Reino",
                     html: emailBody,
