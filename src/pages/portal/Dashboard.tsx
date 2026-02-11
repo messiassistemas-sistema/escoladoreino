@@ -206,7 +206,7 @@ export default function PortalDashboard() {
         </motion.div>
 
         {/* Stats Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4" id="tour-stats">
           {[
             { label: "Média Geral", value: averageGrade.toFixed(1), icon: StarIcon, color: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/20" },
             { label: "Frequência", value: `${attendanceRate.toFixed(1)}%`, icon: Calendar, color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
@@ -234,7 +234,7 @@ export default function PortalDashboard() {
         {/* Main content grid */}
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Próximas Aulas - Left Column (2/3 width) */}
-          <motion.div variants={itemVariants} className="lg:col-span-2 space-y-6">
+          <motion.div variants={itemVariants} className="lg:col-span-2 space-y-6" id="tour-agenda">
             <div className="flex items-center justify-between">
               <h3 className="font-display text-2xl font-bold tracking-tight">Agenda de Aulas</h3>
               <Link to="/portal/calendario">
@@ -327,7 +327,7 @@ export default function PortalDashboard() {
           {/* Right Column (1/3 width) */}
           <div className="space-y-8">
             {/* Notas e Progresso */}
-            <motion.div variants={itemVariants}>
+            <motion.div variants={itemVariants} id="tour-performance">
               <Card className="border-none shadow-soft overflow-hidden">
                 <CardHeader className="bg-primary/5 pb-4">
                   <CardTitle className="font-display text-lg font-bold">Desempenho Acadêmico</CardTitle>
@@ -359,7 +359,7 @@ export default function PortalDashboard() {
             </motion.div>
 
             {/* Avisos Importantes */}
-            <motion.div variants={itemVariants}>
+            <motion.div variants={itemVariants} id="tour-announcements">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-display text-xl font-bold">Comunicados</h3>
                 <Link to="/portal/avisos">
@@ -400,7 +400,7 @@ export default function PortalDashboard() {
         </div>
 
         {/* Recursos Rápidos Section */}
-        <motion.div variants={itemVariants} className="pt-8 border-t border-border/50">
+        <motion.div variants={itemVariants} className="pt-8 border-t border-border/50" id="tour-resources">
           <h3 className="font-display text-2xl font-bold mb-6">Recursos para seus Estudos</h3>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
