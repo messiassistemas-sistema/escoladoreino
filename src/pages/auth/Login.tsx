@@ -61,11 +61,18 @@ export default function Login() {
                 throw error;
             }
 
+            const role = data.user?.user_metadata?.role;
+
             toast({
                 title: "Login realizado com sucesso!",
                 description: "Bem-vindo de volta.",
             });
-            navigate("/");
+
+            if (role === 'admin') {
+                navigate("/admin");
+            } else {
+                navigate("/portal");
+            }
         } catch (error: any) {
             toast({
                 title: "Erro ao fazer login",
