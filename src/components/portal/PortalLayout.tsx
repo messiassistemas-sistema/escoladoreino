@@ -53,6 +53,7 @@ interface PortalLayoutProps {
 }
 
 import { ProfileDialog } from "@/components/profile/ProfileDialog";
+import { DailyQuoteModal } from "@/components/portal/DailyQuoteModal";
 
 export function PortalLayout({ children, title, description }: PortalLayoutProps) {
   const location = useLocation();
@@ -300,6 +301,7 @@ export function PortalLayout({ children, title, description }: PortalLayoutProps
         userName={userData.name}
         userEmail={userData.email}
       />
+      <DailyQuoteModal />
     </div>
   );
 }
