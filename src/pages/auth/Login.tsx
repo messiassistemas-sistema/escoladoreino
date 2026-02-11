@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,6 +29,7 @@ const formSchema = z.object({
 export default function Login() {
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
+    const location = useLocation();
     const { toast } = useToast();
 
     const { data: settings } = useQuery({
@@ -75,14 +76,9 @@ export default function Login() {
                 description: "Bem-vindo de volta.",
             });
 
-            // Pequeno delay para garantir que o AuthContext atualizou
-            setTimeout(() => {
-                if (role === 'admin') {
-                    navigate("/admin");
-                } else {
-                    navigate("/portal");
-                }
-            }, 500);
+            // Redirecionamento inteligente após login
+            const from = (location as any).state?.from?.pathname || (role === 'admin' ? "/admin" : "/portal");
+            navigate(from, { replace: true });
 
         } catch (error: any) {
             console.error("Catch login error:", error);

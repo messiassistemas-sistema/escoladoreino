@@ -1,6 +1,6 @@
 
 import { useAuth } from "@/contexts/AuthContext";
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect } from "react";
@@ -11,6 +11,7 @@ interface ProtectedRouteProps {
 
 export const ProtectedRoute = ({ adminOnly = false, allowedRoles = [] }: { adminOnly?: boolean; allowedRoles?: string[] }) => {
     const { user, isAdmin, role, loading } = useAuth();
+    const location = useLocation();
     const { toast } = useToast();
 
     // Side effect for checking access
@@ -38,7 +39,7 @@ export const ProtectedRoute = ({ adminOnly = false, allowedRoles = [] }: { admin
     }
 
     if (!user) {
-        return <Navigate to="/login" replace />;
+        return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
     if (adminOnly && !isAdmin) {

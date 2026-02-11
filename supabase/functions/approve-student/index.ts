@@ -110,10 +110,17 @@ serve(async (req) => {
                     // and the message will say "use habitual credentials".
                 } else {
                     authUserId = existingUserId;
-                    // Force Reset password
+                    // Force Reset password and ensure metadata is correct
                     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
                         authUserId,
-                        { password: tempPassword }
+                        {
+                            password: tempPassword,
+                            user_metadata: {
+                                full_name: student.name,
+                                role: 'student',
+                                student_id: student.id
+                            }
+                        }
                     );
 
                     if (updateError) {

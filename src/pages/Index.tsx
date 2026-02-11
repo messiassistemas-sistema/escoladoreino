@@ -16,15 +16,7 @@ const Index = () => {
     document.title = "Escola do Reino - Formação Teológica";
   }, []);
 
-  useEffect(() => {
-    if (!loading && user) {
-      if (role === 'admin') {
-        navigate("/admin");
-      } else {
-        navigate("/portal");
-      }
-    }
-  }, [user, role, loading, navigate]);
+  // Removido redirecionamento automático para permitir navegação livre
 
   return (
     <div className="flex min-h-screen flex-col">
