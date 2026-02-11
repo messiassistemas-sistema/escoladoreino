@@ -83,7 +83,7 @@ export function PortalLayout({ children, title, description }: PortalLayoutProps
 
   // Dados do usuário real
   const userData = {
-    name: student?.name || user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || "Aluno",
+    name: user?.user_metadata?.full_name || student?.name || user?.user_metadata?.name || user?.email?.split('@')[0] || "Aluno",
     email: user?.email || "",
     avatar: user?.user_metadata?.avatar_url || "",
     matricula: student?.registration_number || user?.user_metadata?.matricula || "...",

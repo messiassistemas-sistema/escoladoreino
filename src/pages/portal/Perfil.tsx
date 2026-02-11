@@ -112,7 +112,7 @@ export default function PortalPerfil() {
     };
 
     const userData = {
-        name: student?.name || user?.user_metadata?.full_name || user?.user_metadata?.name || "Aluno",
+        name: user?.user_metadata?.full_name || student?.name || user?.user_metadata?.name || "Aluno",
         email: user?.email || "",
         student_id: student?.registration_number || user?.user_metadata?.student_id || "...",
     };

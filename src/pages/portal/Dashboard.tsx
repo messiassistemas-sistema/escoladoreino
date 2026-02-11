@@ -124,7 +124,7 @@ export default function PortalDashboard() {
     visible: { y: 0, opacity: 1 }
   };
 
-  const fullName = student?.name || user?.user_metadata?.full_name || user?.user_metadata?.name || 'Aluno';
+  const fullName = user?.user_metadata?.full_name || student?.name || user?.user_metadata?.name || 'Aluno';
   const firstName = fullName.split(' ')[0];
 
   return (

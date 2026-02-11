@@ -115,15 +115,14 @@ export const studentsService = {
                 updated_at: new Date().toISOString(),
             })
             .eq("id", id)
-            .select()
-            .single();
+            .select();
 
         if (error) {
             console.error("Erro ao atualizar aluno:", error);
             throw error;
         }
 
-        return data as Student;
+        return (data && data.length > 0 ? data[0] : student) as Student;
     },
 
     async deleteStudent(id: string): Promise<void> {
