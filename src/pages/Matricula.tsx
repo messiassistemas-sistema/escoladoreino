@@ -56,9 +56,15 @@ export default function Matricula() {
     }
   }, [cursoSelecionado, content]);
 
+
+  const { data: settings } = useQuery({
+    queryKey: ["system-settings"],
+    queryFn: settingsService.getSettings,
+  });
+
   const selectedCourseData = content?.courses_data?.find(c => c.title.trim() === selectedCourseTitle.trim());
-  // Default to 100.00 if no price set found.
-  const currentPrice = selectedCourseData?.price || 100.00;
+  // Priority: 1. Global Settings Value -> 2. Course Specific Price -> 3. Default 100
+  const currentPrice = settings?.enrollment_value || selectedCourseData?.price || 100.00;
 
   // const courseTitle = selectedCourseData?.title || "Curso (Selecione na página anterior)";
 
@@ -226,10 +232,7 @@ export default function Matricula() {
     return value;
   };
 
-  const { data: settings } = useQuery({
-    queryKey: ["system-settings"],
-    queryFn: settingsService.getSettings,
-  });
+
 
   const getPaymentProviderLabel = (provider: string | undefined) => {
     switch (provider) {
