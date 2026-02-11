@@ -607,35 +607,55 @@ export default function AdminAlunos() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem className="gap-2" onClick={() => {
-                              setDetailsStudent(aluno);
-                              setIsDetailsOpen(true);
-                              setGeneratedPassword(null); // Reset prev password
-                            }}>
-                              <Eye className="h-4 w-4" />
-                              Ver Detalhes
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="gap-2" onClick={() => handleEdit(aluno)}>
-                              <Edit className="h-4 w-4" />
-                              Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="gap-2" onClick={async () => {
-                              if (!aluno.email) {
-                                toast({ title: "Erro", description: "Aluno sem e-mail cadastrado.", variant: "destructive" });
+                        <div className="flex justify-end items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                            title="Enviar Acesso (WhatsApp)"
+                            onClick={() => {
+                              if (!aluno.phone) {
+                                toast({ title: "Erro", description: "Aluno sem telefone cadastrado.", variant: "destructive" });
                                 return;
                               }
+                              const firstName = aluno.name.split(" ")[0];
+                              const message = `Olá *${firstName}*! 👋\n\nSegue seu acesso ao Portal do Aluno:\n\n📧 *Login:* ${aluno.email}\n🔗 *Link:* ${window.location.origin}/login\n\n_Sua senha continua a mesma. Caso tenha esquecido, utilize a opção "Esqueci minha senha" no site._`;
+                              const whatsappUrl = `https://wa.me/55${aluno.phone.replace(/\D/g, "")}?text=${encodeURIComponent(message)}`;
+                              window.open(whatsappUrl, '_blank');
+                            }}
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                          </Button>
 
-                              // Check if there is a generated password for this student currently displayed
-                              const passwordToSend = (detailsStudent?.id === aluno.id && generatedPassword) ? generatedPassword : null;
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem className="gap-2" onClick={() => {
+                                setDetailsStudent(aluno);
+                                setIsDetailsOpen(true);
+                                setGeneratedPassword(null); // Reset prev password
+                              }}>
+                                <Eye className="h-4 w-4" />
+                                Ver Detalhes
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="gap-2" onClick={() => handleEdit(aluno)}>
+                                <Edit className="h-4 w-4" />
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="gap-2" onClick={async () => {
+                                if (!aluno.email) {
+                                  toast({ title: "Erro", description: "Aluno sem e-mail cadastrado.", variant: "destructive" });
+                                  return;
+                                }
 
-                              let emailBody = `
+                                // Check if there is a generated password for this student currently displayed
+                                const passwordToSend = (detailsStudent?.id === aluno.id && generatedPassword) ? generatedPassword : null;
+
+                                let emailBody = `
                                     <h1>Olá, ${aluno.name}!</h1>
                                     <p>Sua matrícula na <strong>Escola do Reino</strong> foi confirmada com sucesso.</p>
                                     <p>Para acessar o portal do aluno, utilize as credenciais abaixo:</p>
@@ -651,74 +671,75 @@ export default function AdminAlunos() {
                                     <p>Equipe Escola do Reino</p>
                                   `;
 
-                              if (!window.confirm(`Enviar e-mail de boas-vindas para ${aluno.name}?${passwordToSend ? ' (Incluindo senha gerada)' : ''}`)) return;
+                                if (!window.confirm(`Enviar e-mail de boas-vindas para ${aluno.name}?${passwordToSend ? ' (Incluindo senha gerada)' : ''}`)) return;
 
-                              toast({ title: "Enviando...", description: "Aguarde..." });
-                              try {
-                                // Import dynamically to avoid circular dependencies if any
-                                const { settingsService } = await import("@/services/settingsService");
-                                await settingsService.sendEmail(
-                                  aluno.email,
-                                  "Acesso ao Portal - Escola do Reino 🎓",
-                                  emailBody
-                                );
-                                toast({ title: "Sucesso!", description: "E-mail de acesso enviado.", variant: "default" });
-                              } catch (e: any) {
-                                toast({ title: "Erro", description: e.message || "Falha ao enviar e-mail.", variant: "destructive" });
-                              }
-                            }}>
-                              <Mail className="h-4 w-4" />
-                              Enviar E-mail (Apenas Mensagem)
-                            </DropdownMenuItem>
-
-                            {/* Reenviar Credenciais (Reset) */}
-                            <DropdownMenuItem className="gap-2 text-blue-600" onClick={async () => {
-                              if (window.confirm(`Isso irá resetar a senha de ${aluno.name} e enviar novas credenciais por E-mail e WhatsApp. Deseja continuar?`)) {
+                                toast({ title: "Enviando...", description: "Aguarde..." });
                                 try {
-                                  toast({ title: "Processando...", description: "Gerando novas credenciais e enviando..." });
-                                  await studentsService.approveStudent(aluno.id, true); // true = resend/force reset
-                                  toast({ title: "Sucesso!", description: "Novas credenciais enviadas." });
-                                  queryClient.invalidateQueries({ queryKey: ["students"] });
+                                  // Import dynamically to avoid circular dependencies if any
+                                  const { settingsService } = await import("@/services/settingsService");
+                                  await settingsService.sendEmail(
+                                    aluno.email,
+                                    "Acesso ao Portal - Escola do Reino 🎓",
+                                    emailBody
+                                  );
+                                  toast({ title: "Sucesso!", description: "E-mail de acesso enviado.", variant: "default" });
                                 } catch (e: any) {
-                                  toast({ title: "Erro", description: e.message, variant: "destructive" });
-                                }
-                              }
-                            }}>
-                              <Send className="h-4 w-4" />
-                              Reenviar Credenciais (Reset)
-                            </DropdownMenuItem>
-                            {aluno.status === 'ativo' ? (
-                              <DropdownMenuItem className="gap-2 text-orange-600" onClick={() => {
-                                if (window.confirm(`Deseja desativar o aluno ${aluno.name}?`)) {
-                                  updateMutation.mutate({ id: aluno.id, data: { status: 'inativo' } });
+                                  toast({ title: "Erro", description: e.message || "Falha ao enviar e-mail.", variant: "destructive" });
                                 }
                               }}>
-                                <Ban className="h-4 w-4" />
-                                Desativar
+                                <Mail className="h-4 w-4" />
+                                Enviar E-mail (Apenas Mensagem)
                               </DropdownMenuItem>
-                            ) : (
-                              <DropdownMenuItem className="gap-2 text-green-600" onClick={() => {
-                                updateMutation.mutate({ id: aluno.id, data: { status: 'ativo' } });
-                              }}>
-                                <CheckCircle className="h-4 w-4" />
-                                Ativar
-                              </DropdownMenuItem>
-                            )}
 
-                            <DropdownMenuItem
-                              className="gap-2 text-destructive"
-                              onClick={() => {
-                                if (window.confirm("Deseja excluir permanentemente este aluno?")) {
-                                  deleteMutation.mutate(aluno.id);
+                              {/* Reenviar Credenciais (Reset) */}
+                              <DropdownMenuItem className="gap-2 text-blue-600" onClick={async () => {
+                                if (window.confirm(`Isso irá resetar a senha de ${aluno.name} e enviar novas credenciais por E-mail e WhatsApp. Deseja continuar?`)) {
+                                  try {
+                                    toast({ title: "Processando...", description: "Gerando novas credenciais e enviando..." });
+                                    await studentsService.approveStudent(aluno.id, true); // true = resend/force reset
+                                    toast({ title: "Sucesso!", description: "Novas credenciais enviadas." });
+                                    queryClient.invalidateQueries({ queryKey: ["students"] });
+                                  } catch (e: any) {
+                                    toast({ title: "Erro", description: e.message, variant: "destructive" });
+                                  }
                                 }
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              Excluir
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
+                              }}>
+                                <Send className="h-4 w-4" />
+                                Reenviar Credenciais (Reset)
+                              </DropdownMenuItem>
+                              {aluno.status === 'ativo' ? (
+                                <DropdownMenuItem className="gap-2 text-orange-600" onClick={() => {
+                                  if (window.confirm(`Deseja desativar o aluno ${aluno.name}?`)) {
+                                    updateMutation.mutate({ id: aluno.id, data: { status: 'inativo' } });
+                                  }
+                                }}>
+                                  <Ban className="h-4 w-4" />
+                                  Desativar
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem className="gap-2 text-green-600" onClick={() => {
+                                  updateMutation.mutate({ id: aluno.id, data: { status: 'ativo' } });
+                                }}>
+                                  <CheckCircle className="h-4 w-4" />
+                                  Ativar
+                                </DropdownMenuItem>
+                              )}
 
-                        </DropdownMenu>
+                              <DropdownMenuItem
+                                className="gap-2 text-destructive"
+                                onClick={() => {
+                                  if (window.confirm("Deseja excluir permanentemente este aluno?")) {
+                                    deleteMutation.mutate(aluno.id);
+                                  }
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+
+                          </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
