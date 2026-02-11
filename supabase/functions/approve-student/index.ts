@@ -144,7 +144,7 @@ serve(async (req) => {
                         <li><strong>Senha:</strong> ${tempPassword}</li>
                     </ul>
                     <p>Recomendamos que altere sua senha após o primeiro acesso.</p>
-                    <p>Acesse o portal aqui: <a href="https://escola-do-reino.vercel.app/login">Portal do Aluno</a></p>
+                    <p>Acesse o portal aqui: <a href="https://escoladoreino.site/login">Portal do Aluno</a></p>
                 `
                 : `
                     <h1>Acesso ao Portal do Aluno</h1>
@@ -152,7 +152,7 @@ serve(async (req) => {
                     <p>Sua matrícula está ativa.</p>
                     <p>Você já possui um cadastro. Acesse o portal com seu email e senha habituais.</p>
                     <p>Se esqueceu sua senha, utilize a opção "Esqueci minha senha" na tela de login.</p>
-                    <p>Acesse aqui: <a href="https://escola-do-reino.vercel.app/login">Portal do Aluno</a></p>
+                    <p>Acesse aqui: <a href="https://escoladoreino.site/login">Portal do Aluno</a></p>
                 `;
 
             const res = await fetch("https://api.resend.com/emails", {
@@ -189,8 +189,8 @@ serve(async (req) => {
 
             if (instanceId && instanceToken) {
                 const whatsappMessage = isNewUser
-                    ? `Olá *${student.name}*! 👋\n\n${resend ? "Aqui estão suas novas credenciais de acesso:" : "Sua matrícula na *Escola do Reino* foi aprovada! ✅\n\nAqui estão seus dados de acesso ao portal:"}\n\n📧 *Login:* ${student.email}\n🔑 *Senha:* ${tempPassword}\n\n🔗 Acesse em: https://escola-do-reino.vercel.app/login`
-                    : `Olá *${student.name}*! 👋\n\nSua matrícula está ativa! ✅\n\nComo você já possui cadastro, pode acessar o portal com seu login e senha atuais.\n\n🔗 Acesse em: https://escola-do-reino.vercel.app/login`;
+                    ? `Olá *${student.name}*! 👋\n\n${resend ? "Aqui estão suas novas credenciais de acesso:" : "Sua matrícula na *Escola do Reino* foi aprovada! ✅\n\nAqui estão seus dados de acesso ao portal:"}\n\n📧 *Login:* ${student.email}\n🔑 *Senha:* ${tempPassword}\n\n🔗 Acesse em: https://escoladoreino.site/login`
+                    : `Olá *${student.name}*! 👋\n\nSua matrícula está ativa! ✅\n\nComo você já possui cadastro, pode acessar o portal com seu login e senha atuais.\n\n🔗 Acesse em: https://escoladoreino.site/login`;
 
                 try {
                     const zaUrl = `https://api.z-api.io/instances/${instanceId}/token/${instanceToken}/send-text`;

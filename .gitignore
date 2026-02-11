@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# TestSprite and PRD
+PRD.md
+testsprite_tests/
+
