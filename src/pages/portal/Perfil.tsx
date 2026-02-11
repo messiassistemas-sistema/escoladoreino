@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,9 +22,15 @@ import { useQuery } from "@tanstack/react-query";
 import { studentsService } from "@/services/studentsService";
 
 const formSchema = z.object({
-    password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres"),
-    confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
+    name: z.string().min(3, "O nome deve ter pelo menos 3 caracteres"),
+    password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres").optional().or(z.literal("")),
+    confirmPassword: z.string().optional().or(z.literal("")),
+}).refine((data) => {
+    if (data.password && data.password !== data.confirmPassword) {
+        return false;
+    }
+    return true;
+}, {
     message: "As senhas não conferem",
     path: ["confirmPassword"],
 });
@@ -35,7 +41,7 @@ export default function PortalPerfil() {
     const [loading, setLoading] = useState(false);
 
     // Fetch Student Profile from Database
-    const { data: student } = useQuery({
+    const { data: student, refetch: refetchStudent } = useQuery({
         queryKey: ['student-profile', user?.email],
         queryFn: () => user?.email ? studentsService.getStudentByEmail(user.email) : null,
         enabled: !!user?.email
@@ -44,29 +50,60 @@ export default function PortalPerfil() {
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
+            name: "",
             password: "",
             confirmPassword: "",
         },
     });
 
+    // Update form when student data is loaded
+    useEffect(() => {
+        if (student) {
+            form.reset({
+                name: student.name,
+                password: "",
+                confirmPassword: "",
+            });
+        } else if (user?.user_metadata) {
+            form.setValue("name", user.user_metadata.full_name || user.user_metadata.name || "");
+        }
+    }, [student, user, form]);
+
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         setLoading(true);
         try {
-            const { error } = await supabase.auth.updateUser({
-                password: values.password,
-            });
+            // 1. Update Profile in Database if name changed
+            if (student && values.name !== student.name) {
+                await studentsService.updateStudent(student.id, { name: values.name });
+            }
+
+            // 2. Update Auth User (Metadata and Password if provided)
+            const updateData: any = {
+                data: {
+                    full_name: values.name,
+                    name: values.name
+                }
+            };
+
+            if (values.password) {
+                updateData.password = values.password;
+            }
+
+            const { error } = await supabase.auth.updateUser(updateData);
 
             if (error) throw error;
 
             toast({
-                title: "Senha atualizada!",
-                description: "Sua senha foi alterada com sucesso.",
+                title: "Perfil atualizado!",
+                description: "Suas informações foram salvas com sucesso.",
             });
-            form.reset();
+
+            refetchStudent();
+            form.reset({ ...values, password: "", confirmPassword: "" });
         } catch (error: any) {
             toast({
                 title: "Erro ao atualizar",
-                description: error.message || "Ocorreu um erro ao tentar alterar a senha.",
+                description: error.message || "Ocorreu um erro ao tentar atualizar o perfil.",
                 variant: "destructive",
             });
         } finally {
@@ -119,6 +156,19 @@ export default function PortalPerfil() {
                         <CardContent>
                             <Form {...form}>
                                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                                    <FormField
+                                        control={form.control}
+                                        name="name"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="font-bold">Nome Completo</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="Seu nome" className="rounded-xl" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                     <div className="grid gap-6 sm:grid-cols-2">
                                         <FormField
                                             control={form.control}
