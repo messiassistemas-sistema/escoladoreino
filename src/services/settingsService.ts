@@ -41,14 +41,6 @@ export interface UserProfile {
     created_at: string;
 }
 
-// User Management Interface
-export interface UserProfile {
-    id: string;
-    email: string;
-    full_name: string;
-    role: 'admin' | 'secretary' | 'teacher' | 'treasurer' | 'student';
-    created_at: string;
-}
 
 export const settingsService = {
     // ... existing methods ...
@@ -270,5 +262,35 @@ export const settingsService = {
                 <p>Equipe de TI</p>
             `
         );
+    },
+    async updateUser(userId: string, data: { fullName: string; role: string }): Promise<void> {
+        // Atualiza metadados do Auth via Edge Function
+        const { error: fnError } = await supabase.functions.invoke("admin-update-user", {
+            body: { userId, ...data }
+        });
+
+        if (fnError) throw new Error(`Erro na função: ${fnError.message}`);
+
+        // Também atualiza a tabela pública profiles, se necessário (depende da arquitetura de sincronização)
+        // Por via das dúvidas, atualizamos a tabela perfil que é o que a lista exibe
+        const { error: dbError } = await supabase
+            .from("profiles")
+            .update({ full_name: data.fullName, role: data.role })
+            .eq("id", userId);
+
+        if (dbError) throw dbError;
+    },
+
+    async deleteUser(userId: string): Promise<void> {
+        // Deleta do Auth via Edge Function
+        const { error: fnError } = await supabase.functions.invoke("admin-delete-user", {
+            body: { userId }
+        });
+
+        if (fnError) throw new Error(`Erro na função: ${fnError.message}`);
+
+        // A tabela profiles deve ser limpa via CASCADE no banco ou trigger, mas se não tiver,
+        // o Auth delete geralmente remove do auth.users. 
+        // Se `profiles` tem FK com `auth.users` e `ON DELETE CASCADE`, ele some sozinho.
     }
 };

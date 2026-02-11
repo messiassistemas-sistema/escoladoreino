@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { settingsService } from "@/services/settingsService";
@@ -30,7 +31,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Check, Copy, KeyRound, Loader2, MessageCircle, RefreshCcw, Key } from "lucide-react";
+import { Plus, Check, Copy, KeyRound, Loader2, MessageCircle, RefreshCcw, Key, Pencil, Trash2 } from "lucide-react";
 import {
     Tooltip,
     TooltipContent,
@@ -52,11 +53,15 @@ export function UsersManagement() {
     const [credentialModalOpen, setCredentialModalOpen] = useState(false);
     const [activeCredentials, setActiveCredentials] = useState<{ email: string, password: string, name: string } | null>(null);
 
-    // Manual Password State
+    // Manual Password & Actions State
     const [manualPasswordOpen, setManualPasswordOpen] = useState(false);
     const [selectedUserForPassword, setSelectedUserForPassword] = useState<any>(null);
     const [manualPassword, setManualPassword] = useState("");
     const [isResendingOnly, setIsResendingOnly] = useState(false);
+
+    // Edit User State
+    const [isEditUserOpen, setIsEditUserOpen] = useState(false);
+    const [editUserData, setEditUserData] = useState({ fullName: "", role: "" });
 
     const { data: users = [], isLoading } = useQuery({
         queryKey: ["admin-users"],
@@ -95,8 +100,26 @@ export function UsersManagement() {
             });
             setCredentialModalOpen(true);
             toast({ title: "Senha redefinida!", description: "Nova senha gerada com sucesso." });
-            setManualPasswordOpen(false); // Close manual dialog if open
-            setManualPassword(""); // Reset
+            setManualPasswordOpen(false);
+            setManualPassword("");
+        },
+        onError: (error: Error) => {
+            toast({ title: "Erro", description: error.message, variant: "destructive" });
+        }
+    });
+
+    const manualPasswordMutation = useMutation({
+        mutationFn: (data: { user: any, password: string }) => settingsService.resetUserPassword(data.user.id, data.user.email, data.password),
+        onSuccess: (response: { password: string }, variables) => {
+            setActiveCredentials({
+                email: variables.user.email,
+                password: response.password,
+                name: variables.user.full_name
+            });
+            setCredentialModalOpen(true);
+            setManualPasswordOpen(false);
+            setManualPassword("");
+            toast({ title: "Sucesso", description: "Senha definida manualmente." });
         },
         onError: (error: Error) => {
             toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -121,23 +144,61 @@ export function UsersManagement() {
         });
     };
 
-    const manualPasswordMutation = useMutation({
-        mutationFn: (data: { user: any, password: string }) => settingsService.resetUserPassword(data.user.id, data.user.email, data.password),
-        onSuccess: (response: { password: string }, variables) => {
-            setActiveCredentials({
-                email: variables.user.email,
-                password: response.password,
-                name: variables.user.full_name
-            });
-            setCredentialModalOpen(true);
-            setManualPasswordOpen(false);
-            setManualPassword("");
-            toast({ title: "Sucesso", description: "Senha definida manualmente." });
+    const deleteUserMutation = useMutation({
+        mutationFn: async (userId: string) => {
+            await settingsService.deleteUser(userId);
         },
-        onError: (error: Error) => {
-            toast({ title: "Erro", description: error.message, variant: "destructive" });
-        }
+        onSuccess: () => {
+            toast({
+                title: "Usuário excluído",
+                description: "O usuário foi removido com sucesso.",
+            });
+            queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+        },
+        onError: (error: any) => {
+            toast({
+                title: "Erro ao excluir",
+                description: error.message,
+                variant: "destructive",
+            });
+        },
     });
+
+    const editUserMutation = useMutation({
+        mutationFn: async (data: { userId: string; fullName: string; role: string }) => {
+            await settingsService.updateUser(data.userId, { fullName: data.fullName, role: data.role });
+        },
+        onSuccess: () => {
+            toast({
+                title: "Usuário atualizado",
+                description: "Os dados do usuário foram salvos com sucesso.",
+            });
+            setIsEditUserOpen(false);
+            queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+        },
+        onError: (error: any) => {
+            toast({
+                title: "Erro ao atualizar",
+                description: error.message,
+                variant: "destructive",
+            });
+        },
+    });
+
+    const handleEditUserSubmit = () => {
+        if (!selectedUserForPassword) return;
+        editUserMutation.mutate({
+            userId: selectedUserForPassword.id,
+            fullName: editUserData.fullName,
+            role: editUserData.role
+        });
+    };
+
+    const handleDeleteUser = (user: any) => {
+        if (confirm(`Tem certeza que deseja excluir ${user.full_name}? Essa ação não pode ser desfeita.`)) {
+            deleteUserMutation.mutate(user.id);
+        }
+    };
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
@@ -158,39 +219,6 @@ export function UsersManagement() {
                     <DialogTrigger asChild>
                         <Button className="gap-2"><Plus className="h-4 w-4" /> Novo Usuário</Button>
                     </DialogTrigger>
-                    {/* Manual Password Dialog */}
-                    <Dialog open={manualPasswordOpen} onOpenChange={setManualPasswordOpen}>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>
-                                    {isResendingOnly ? "Enviar Acesso via WhatsApp" : "Definir Senha Manualmente"}
-                                </DialogTitle>
-                                <DialogDescription>
-                                    {isResendingOnly
-                                        ? `Informe a senha atual de ${selectedUserForPassword?.full_name} para enviar.`
-                                        : `Defina uma nova senha para ${selectedUserForPassword?.full_name} no sistema.`}
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4 py-4">
-                                <div className="space-y-2">
-                                    <Label>Nova Senha</Label>
-                                    <Input
-                                        value={manualPassword}
-                                        onChange={(e) => setManualPassword(e.target.value)}
-                                        placeholder={isResendingOnly ? "Digite a senha do usuário..." : "Digite a nova senha..."}
-                                    />
-                                </div>
-                            </div>
-                            <DialogFooter>
-                                <Button variant="outline" onClick={() => setManualPasswordOpen(false)}>Cancelar</Button>
-                                <Button onClick={handleManualPasswordSubmit} disabled={resetPasswordMutation.isPending || !manualPassword}>
-                                    {isResendingOnly
-                                        ? "Abrir WhatsApp"
-                                        : (resetPasswordMutation.isPending ? "Salvando..." : "Salvar Senha")}
-                                </Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>Adicionar Novo Usuário</DialogTitle>
@@ -273,6 +301,42 @@ export function UsersManagement() {
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
+                                                        className="hover:bg-blue-50 text-blue-600 hover:text-blue-700"
+                                                        onClick={() => {
+                                                            setSelectedUserForPassword(user);
+                                                            setEditUserData({ fullName: user.full_name, role: user.role });
+                                                            setIsEditUserOpen(true);
+                                                        }}
+                                                    >
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p>Editar Usuário</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="hover:bg-red-50 text-red-600 hover:text-red-700"
+                                                        onClick={() => handleDeleteUser(user)}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p>Excluir Usuário</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
                                                         onClick={() => {
                                                             if (confirm("Deseja redefinir a senha deste usuário aleatoriamente?")) {
                                                                 resetPasswordMutation.mutate(user as any);
@@ -317,6 +381,7 @@ export function UsersManagement() {
                                                         size="sm"
                                                         onClick={() => {
                                                             setSelectedUserForPassword(user);
+                                                            setIsResendingOnly(false);
                                                             setManualPassword("");
                                                             setManualPasswordOpen(true);
                                                         }}
@@ -335,7 +400,7 @@ export function UsersManagement() {
                         ))}
                         {users.length === 0 && !isLoading && (
                             <TableRow>
-                                <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                                     Nenhum usuário encontrado.
                                 </TableCell>
                             </TableRow>
@@ -343,6 +408,88 @@ export function UsersManagement() {
                     </TableBody>
                 </Table>
             </div>
+
+            {/* Edit User Dialog */}
+            <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Editar Usuário</DialogTitle>
+                        <DialogDescription>
+                            Atualize as informações de {selectedUserForPassword?.full_name}.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label>Nome Completo</Label>
+                            <Input
+                                value={editUserData.fullName}
+                                onChange={(e) => setEditUserData({ ...editUserData, fullName: e.target.value })}
+                                placeholder="Nome do usuário..."
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Cargo</Label>
+                            <Select
+                                value={editUserData.role}
+                                onValueChange={(value) => setEditUserData({ ...editUserData, role: value })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="admin">Administrador</SelectItem>
+                                    <SelectItem value="secretary">Secretário(a)</SelectItem>
+                                    <SelectItem value="treasurer">Tesoureiro(a)</SelectItem>
+                                    <SelectItem value="teacher">Professor(a)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsEditUserOpen(false)}>Cancelar</Button>
+                        <Button onClick={handleEditUserSubmit} disabled={editUserMutation.isPending}>
+                            {editUserMutation.isPending ? "Salvando..." : "Salvar Alterações"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Manual Password & WhatsApp Dialog */}
+            <Dialog open={manualPasswordOpen} onOpenChange={setManualPasswordOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            {isResendingOnly ? "Enviar Acesso via WhatsApp" : "Definir Senha Manualmente"}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {isResendingOnly
+                                ? `Informe a senha atual de ${selectedUserForPassword?.full_name} para enviar.`
+                                : `Defina uma nova senha para ${selectedUserForPassword?.full_name} no sistema.`}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label>
+                                {isResendingOnly ? "Senha Atual (Para Envio)" : "Nova Senha"}
+                            </Label>
+                            <Input
+                                value={manualPassword}
+                                onChange={(e) => setManualPassword(e.target.value)}
+                                placeholder={isResendingOnly ? "Digite a senha do usuário..." : "Digite a nova senha..."}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setManualPasswordOpen(false)}>Cancelar</Button>
+                        <Button onClick={handleManualPasswordSubmit} disabled={(!isResendingOnly && resetPasswordMutation.isPending) || !manualPassword}>
+                            {isResendingOnly
+                                ? "Abrir WhatsApp"
+                                : (resetPasswordMutation.isPending ? "Salvando..." : "Salvar Senha")}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             {/* Credentials Success Modal */}
             <Dialog open={credentialModalOpen} onOpenChange={setCredentialModalOpen}>
                 <DialogContent className="sm:max-w-md">
@@ -396,6 +543,6 @@ export function UsersManagement() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div >
+        </div>
     );
 }
