@@ -87,7 +87,8 @@ serve(async (req) => {
             user_metadata: {
                 full_name: student.name,
                 role: 'student',
-                student_id: student.id
+                student_id: student.id,
+                must_change_password: true
             }
         });
 

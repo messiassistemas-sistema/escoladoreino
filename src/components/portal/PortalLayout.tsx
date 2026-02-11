@@ -41,9 +41,11 @@ const sidebarLinks = [
   { href: "/portal/calendario", label: "Calendário letivo", icon: Calendar },
   { href: "/portal/materiais", label: "Materiais de Estudo", icon: FileText },
   { href: "/portal/avisos", label: "Comunicados", icon: Bell },
+  { href: "/portal/perfil", label: "Meu Perfil", icon: User },
 ];
 
 interface PortalLayoutProps {
+
   children: React.ReactNode;
   title: string;
   description?: string;
@@ -193,10 +195,10 @@ export function PortalLayout({ children, title, description }: PortalLayoutProps
                 <HelpCircle className="h-5 w-5" />
                 <span>Central de Ajuda</span>
               </Link>
-              <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground">
+              <Link to="/portal/perfil" className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground">
                 <Settings className="h-5 w-5" />
                 <span>Configurações</span>
-              </button>
+              </Link>
             </div>
           </div>
         </nav>

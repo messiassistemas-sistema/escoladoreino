@@ -23,6 +23,7 @@ import PortalCalendario from "./pages/portal/Calendario";
 import PortalMateriais from "./pages/portal/Materiais";
 import PortalAvisos from "./pages/portal/Avisos";
 import PortalHelpCenter from "./pages/portal/HelpCenter";
+import PortalPerfil from "./pages/portal/Perfil";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -114,6 +115,7 @@ const App = () => (
                   <Route path="/portal/materiais" element={<PortalMateriais />} />
                   <Route path="/portal/avisos" element={<PortalAvisos />} />
                   <Route path="/portal/ajuda" element={<PortalHelpCenter />} />
+                  <Route path="/portal/perfil" element={<PortalPerfil />} />
                 </Route>
 
                 {/* Protected Admin Routes */}

@@ -165,6 +165,23 @@ export default function PortalDashboard() {
           </motion.div>
         )}
 
+        {/* Password Warning Banner */}
+        {user?.user_metadata?.must_change_password && (
+          <motion.div variants={itemVariants}>
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 shadow-sm animate-pulse">
+              <div className="flex items-center gap-3 text-sm font-bold">
+                <AlertCircle className="h-5 w-5 shrink-0" />
+                <span>Sua conta utiliza uma senha temporária. Para sua segurança, recomendamos que altere sua senha.</span>
+              </div>
+              <Link to="/portal/perfil">
+                <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl whitespace-nowrap">
+                  Alterar Senha Agora
+                </Button>
+              </Link>
+            </div>
+          </motion.div>
+        )}
+
         {/* Welcome Banner / Hero */}
         <motion.div variants={itemVariants} className="relative overflow-hidden rounded-3xl bg-primary px-8 py-10 text-primary-foreground shadow-2xl shadow-primary/20">
           <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-white/10 to-transparent" />
