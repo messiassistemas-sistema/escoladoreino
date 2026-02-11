@@ -33,6 +33,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 import { useQuery } from "@tanstack/react-query";
 import { settingsService } from "@/services/settingsService";
+import { studentsService } from "@/services/studentsService";
 
 const sidebarLinks = [
   { href: "/portal", label: "Início", icon: LayoutDashboard },
@@ -72,12 +73,19 @@ export function PortalLayout({ children, title, description }: PortalLayoutProps
   // Mock user data
   const { user } = useAuth();
 
+  // Fetch student profile for accurate data (like name and registration)
+  const { data: student } = useQuery({
+    queryKey: ["student-profile", user?.email],
+    queryFn: () => (user?.email ? studentsService.getStudentByEmail(user.email) : null),
+    enabled: !!user?.email,
+  });
+
   // Dados do usuário real
   const userData = {
-    name: user?.user_metadata?.name || user?.email?.split('@')[0] || "Aluno",
+    name: student?.name || user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || "Aluno",
     email: user?.email || "",
     avatar: user?.user_metadata?.avatar_url || "",
-    matricula: user?.user_metadata?.matricula || "...",
+    matricula: student?.registration_number || user?.user_metadata?.matricula || "...",
     turma: user?.user_metadata?.turma || "Teologia Sistemática",
   };
 

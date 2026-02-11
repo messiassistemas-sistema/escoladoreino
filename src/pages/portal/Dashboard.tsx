@@ -124,7 +124,8 @@ export default function PortalDashboard() {
     visible: { y: 0, opacity: 1 }
   };
 
-  const firstName = student?.name?.split(' ')[0] || user?.user_metadata?.name?.split(' ')[0] || 'Aluno';
+  const fullName = student?.name || user?.user_metadata?.full_name || user?.user_metadata?.name || 'Aluno';
+  const firstName = fullName.split(' ')[0];
 
   return (
     <PortalLayout title={`Bem-vindo de volta, ${firstName}!`} description="Aqui está o resumo do seu progresso acadêmico.">
