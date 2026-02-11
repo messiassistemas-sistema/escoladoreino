@@ -18,6 +18,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { KeyRound, Loader2, User, Mail, Hash } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQuery } from "@tanstack/react-query";
+import { studentsService } from "@/services/studentsService";
 
 const formSchema = z.object({
     password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres"),
@@ -28,9 +30,16 @@ const formSchema = z.object({
 });
 
 export default function PortalPerfil() {
-    const { user, profile } = useAuth();
+    const { user } = useAuth();
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
+
+    // Fetch Student Profile from Database
+    const { data: student } = useQuery({
+        queryKey: ['student-profile', user?.email],
+        queryFn: () => user?.email ? studentsService.getStudentByEmail(user.email) : null,
+        enabled: !!user?.email
+    });
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -66,9 +75,9 @@ export default function PortalPerfil() {
     };
 
     const userData = {
-        name: user?.user_metadata?.full_name || user?.user_metadata?.name || "Aluno",
+        name: student?.name || user?.user_metadata?.full_name || user?.user_metadata?.name || "Aluno",
         email: user?.email || "",
-        student_id: user?.user_metadata?.student_id || "N/A",
+        student_id: student?.registration_number || user?.user_metadata?.student_id || "...",
     };
 
     return (
