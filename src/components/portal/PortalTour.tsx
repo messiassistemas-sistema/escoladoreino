@@ -115,6 +115,7 @@ export const PortalTour: React.FC<PortalTourProps> = ({ runOnMount = false }) =>
                 close: 'Fechar',
                 last: 'Finalizar',
                 next: 'Próximo',
+                nextLabelWithProgress: 'Próximo ({step} de {steps})',
                 skip: 'Pular Tour',
             }}
             styles={{
