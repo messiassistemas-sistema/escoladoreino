@@ -52,33 +52,55 @@ export default function Login() {
     async function onSubmit(values: z.infer<typeof formSchema>) {
         setIsLoading(true);
         try {
+            console.log("Tentando login para:", values.email);
             const { data, error } = await supabase.auth.signInWithPassword({
                 email: values.email,
                 password: values.password,
             });
 
             if (error) {
+                console.error("Erro Supabase Auth:", error);
                 throw error;
             }
 
-            const role = data.user?.user_metadata?.role;
+            if (!data.user) {
+                throw new Error("Usuário não encontrado após login.");
+            }
+
+            const role = data.user.user_metadata?.role;
+            console.log("Login bem-sucedido. Role:", role);
 
             toast({
                 title: "Login realizado com sucesso!",
                 description: "Bem-vindo de volta.",
             });
 
-            if (role === 'admin') {
-                navigate("/admin");
-            } else {
-                navigate("/portal");
-            }
+            // Pequeno delay para garantir que o AuthContext atualizou
+            setTimeout(() => {
+                if (role === 'admin') {
+                    navigate("/admin");
+                } else {
+                    navigate("/portal");
+                }
+            }, 500);
+
         } catch (error: any) {
+            console.error("Catch login error:", error);
+            let errorMessage = "Ocorreu um erro ao tentar entrar.";
+
+            if (error.message === "Invalid login credentials") {
+                errorMessage = "E-mail ou senha incorretos.";
+            } else if (error.message.includes("Email not confirmed")) {
+                errorMessage = "E-mail ainda não confirmado.";
+            } else if (error.status === 429) {
+                errorMessage = "Muitas tentativas. Tente novamente mais tarde.";
+            } else {
+                errorMessage = error.message;
+            }
+
             toast({
-                title: "Erro ao fazer login",
-                description: error.message === "Invalid login credentials"
-                    ? "E-mail ou senha incorretos."
-                    : error.message,
+                title: "Falha na autenticação",
+                description: errorMessage,
                 variant: "destructive",
             });
         } finally {

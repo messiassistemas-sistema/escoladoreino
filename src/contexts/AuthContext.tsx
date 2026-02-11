@@ -49,14 +49,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 const metadataRole = session.user.user_metadata?.role;
                 console.log("Metadata role:", metadataRole);
 
-                // If we have metadata role, we can stop loading early for admin check
-                // We still fetch profile for other data, but don't block
-                if (metadataRole) {
-                    setLoading(false);
-                } else {
-                    setLoading(true);
-                }
-
                 try {
                     console.log("Fetching profile for user:", session.user.id);
 

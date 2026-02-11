@@ -7,6 +7,7 @@ import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 
 type StatusType = "pending" | "approved" | "rejected" | null;
 
@@ -23,6 +24,7 @@ export default function StatusMatricula() {
   const [token, setToken] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [statusInfo, setStatusInfo] = useState<StatusInfo | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     document.title = "Escola do Reino - Status da Matrícula";
@@ -43,21 +45,24 @@ export default function StatusMatricula() {
 
       if (student) {
         setStatusInfo({
-          status: student.status === 'ativo' ? 'approved' : 'pending', // Mapeamento básico
+          status: student.status === 'ativo' ? 'approved' : 'pending',
           name: student.name,
           email: student.email || email,
           turma: student.class_name || "Turma não definida",
           matricula: student.registration_number || undefined,
         });
       } else {
-        // Se não encontrar, ou mostramos erro ou null.
-        // Para manter a UX, se não achar, assumimos que não tem matrícula ou foi rejeitado/não existe.
-        // Vou setar null, mas talvez o user queira ver "recusado" se não achar?
-        // O mock retornava "recusado" para emails específicos.
-        // Aqui, se não existe, é "Não Encontrado".
-        setStatusInfo(null);
-        // Poderia mostrar um toast ou mensagem de erro
-        console.log("Aluno não encontrado");
+        setStatusInfo({
+          status: "rejected", // Using rejected style or handled by UI
+          name: "Não Encontrado",
+          email: email,
+          turma: "Nenhum registro localizado",
+        });
+        toast({
+          title: "Inscrição não encontrada",
+          description: "Verifique o e-mail digitado ou entre em contato com a secretaria.",
+          variant: "destructive",
+        });
       }
 
     } catch (error) {
