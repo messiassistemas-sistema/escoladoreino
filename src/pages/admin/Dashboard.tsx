@@ -73,8 +73,13 @@ export default function AdminDashboard() {
         supabase.from("attendance_records")
           .select("created_at, status")
           .gte("created_at", sevenDaysAgo.toISOString()),
-        supabase.from("system_settings").select("enrollment_value").single()
+        supabase.from("system_settings").select("enrollment_value").single(),
+        supabase.from("lessons").select("*", { count: "exact", head: true }),
+        supabase.from("attendance_records").select("*", { count: "exact", head: true }).eq("status", "present")
       ]);
+
+      const totalLessonsCount = lessonsResp.count || 0;
+      const totalPresenceCount = attendanceResp.count || 0;
 
       // --- Financials ---
       const monthlyRevenue = (paymentsResp.data || [])
@@ -99,11 +104,11 @@ export default function AdminDashboard() {
         : "0";
 
       // --- Attendance ---
-      const validAttendance = (attendanceResp.data || [])
-        .filter(s => s.attendance_rate !== null)
-        .map(s => Number(s.attendance_rate));
-      const avgAttendance = validAttendance.length > 0
-        ? (validAttendance.reduce((a, b) => a + b, 0) / validAttendance.length).toFixed(1)
+      // We calculate global attendance as: (Total Present Records) / (Total Active Students * Total Lessons Created)
+      // This is a more accurate global health metric than averaging per-student rates which might be stale.
+      const academicPotential = activeStudentsCount * totalLessonsCount;
+      const avgAttendance = academicPotential > 0
+        ? ((totalPresenceCount / academicPotential) * 100).toFixed(1)
         : "0";
 
       // Attendance Trend (Daily Present Count)
@@ -118,7 +123,7 @@ export default function AdminDashboard() {
       }
 
       (attendanceTrendgResp.data || []).forEach(record => {
-        if (record.status === 'presente') {
+        if (record.status === 'present') {
           const d = new Date(record.created_at || new Date());
           const key = d.toLocaleDateString('pt-BR', { weekday: 'short' });
           if (trendMap[key] !== undefined) trendMap[key]++;
