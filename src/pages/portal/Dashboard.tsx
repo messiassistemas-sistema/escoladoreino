@@ -235,10 +235,10 @@ export default function PortalDashboard() {
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Próximas Aulas - Left Column (2/3 width) */}
           <motion.div variants={itemVariants} className="lg:col-span-2 space-y-6" id="tour-agenda">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h3 className="font-display text-2xl font-bold tracking-tight">Agenda de Aulas</h3>
               <Link to="/portal/calendario">
-                <Button variant="ghost" size="sm" className="font-bold text-primary group">
+                <Button variant="ghost" size="sm" className="font-bold text-primary group w-full sm:w-auto justify-start sm:justify-center">
                   Cronograma Completo <ChevronRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Button>
               </Link>
@@ -360,10 +360,10 @@ export default function PortalDashboard() {
 
             {/* Avisos Importantes */}
             <motion.div variants={itemVariants} id="tour-announcements">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                 <h3 className="font-display text-xl font-bold">Comunicados</h3>
                 <Link to="/portal/avisos">
-                  <Badge variant="outline" className="cursor-pointer border-primary/20 text-primary hover:bg-primary/5 transition-colors font-bold">VER TODOS</Badge>
+                  <Badge variant="outline" className="cursor-pointer border-primary/20 text-primary hover:bg-primary/5 transition-colors font-bold w-fit">VER TODOS</Badge>
                 </Link>
               </div>
               <div className="space-y-3">
