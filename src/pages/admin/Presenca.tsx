@@ -32,6 +32,8 @@ import { Progress } from "@/components/ui/progress";
 import { useQuery } from "@tanstack/react-query";
 import { studentsService } from "@/services/studentsService";
 import { subjectsService } from "@/services/subjectsService";
+import { lessonsService } from "@/services/lessonsService";
+import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 
 
@@ -50,17 +52,53 @@ export default function AdminPresenca() {
     queryFn: subjectsService.getSubjects,
   });
 
+  const { data: lessons = [] } = useQuery({
+    queryKey: ["lessons"],
+    queryFn: lessonsService.getLessons,
+  });
+
+  const { data: allAttendance = [] } = useQuery({
+    queryKey: ["all-attendance-records"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("attendance_records")
+        .select("*, lesson:lessons(subject_id)");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const filteredLessons = disciplinaFilter === "todas"
+    ? lessons
+    : lessons.filter(l => l.subject_id === disciplinaFilter);
+
+  const filteredLessonIds = new Set(filteredLessons.map(l => l.id));
+  const totalAulas = filteredLessons.length;
+
+  const getStudentAttendanceCount = (studentId: string) => {
+    return allAttendance.filter(
+      (a: any) => a.student_id === studentId
+        && a.status === 'present'
+        && filteredLessonIds.has(a.lesson_id)
+    ).length;
+  };
+
   const activeStudents = students.filter(s => s.status !== 'pendente');
 
   const filteredData = activeStudents.filter((item) =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const getStudentRate = (studentId: string) => {
+    if (totalAulas === 0) return 0;
+    return (getStudentAttendanceCount(studentId) / totalAulas) * 100;
+  };
+
   const mediaPresenca = activeStudents.length > 0
-    ? activeStudents.reduce((acc, item) => acc + Number(item.attendance_rate), 0) / activeStudents.length
+    ? activeStudents.reduce((acc, item) => acc + getStudentRate(item.id), 0) / activeStudents.length
     : 0;
 
-  const alunosAbaixo = activeStudents.filter((item) => Number(item.attendance_rate) < 75).length;
+  const alunosAbaixo = activeStudents.filter((item) => getStudentRate(item.id) < 75).length;
 
 
   return (
@@ -80,7 +118,7 @@ export default function AdminPresenca() {
             <CardContent className="p-4 text-center">
               <p className="text-sm text-muted-foreground">100% Presença</p>
               <p className="font-display text-2xl font-bold text-success">
-                {students.filter((a) => Number(a.attendance_rate) === 100).length}
+                {activeStudents.filter((a) => getStudentRate(a.id) === 100).length}
               </p>
             </CardContent>
 
@@ -96,7 +134,7 @@ export default function AdminPresenca() {
           <Card className="shadow-soft">
             <CardContent className="p-4 text-center">
               <p className="text-sm text-muted-foreground">Total de Aulas</p>
-              <p className="font-display text-2xl font-bold">15</p>
+              <p className="font-display text-2xl font-bold">{totalAulas}</p>
             </CardContent>
           </Card>
         </div>
@@ -170,31 +208,31 @@ export default function AdminPresenca() {
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
-                        15
+                        {totalAulas}
                       </TableCell>
                       <TableCell className="text-center">
                         <span className="text-success">
-                          {Math.round((Number(item.attendance_rate) / 100) * 15)}
+                          {getStudentAttendanceCount(item.id)}
                         </span>
                       </TableCell>
                       <TableCell className="text-center">
                         <span className="text-destructive">
-                          {15 - Math.round((Number(item.attendance_rate) / 100) * 15)}
+                          {totalAulas - getStudentAttendanceCount(item.id)}
                         </span>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Progress
-                            value={Number(item.attendance_rate)}
+                            value={getStudentRate(item.id)}
                             className="h-2 w-24"
                           />
                           <span className="text-sm font-medium">
-                            {Number(item.attendance_rate).toFixed(1)}%
+                            {getStudentRate(item.id).toFixed(1)}%
                           </span>
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
-                        {Number(item.attendance_rate) >= 75 ? (
+                        {getStudentRate(item.id) >= 75 ? (
                           <Badge className="bg-success text-success-foreground">
                             <CheckCircle2 className="mr-1 h-3 w-3" />
                             Regular
