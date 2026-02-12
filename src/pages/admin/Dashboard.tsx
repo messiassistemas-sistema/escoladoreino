@@ -58,10 +58,12 @@ export default function AdminDashboard() {
         subjectsResp,
         pendingStudentsResp,
         paymentsResp,
-        attendanceResp,
+        attendanceRateResp, // Individual student rates
         monthlyGrowthResp,
-        attendanceTrendgResp,
-        settingsResp
+        attendanceTrendgResp, // Records for the 7-day trend
+        settingsResp,
+        lessonsResp,
+        attendanceCountResp
       ] = await Promise.all([
         supabase.from("students").select("*", { count: "exact", head: true }),
         supabase.from("teachers").select("*", { count: "exact", head: true }),
@@ -79,7 +81,7 @@ export default function AdminDashboard() {
       ]);
 
       const totalLessonsCount = lessonsResp.count || 0;
-      const totalPresenceCount = attendanceResp.count || 0;
+      const totalPresenceCount = attendanceCountResp.count || 0;
 
       // --- Financials ---
       const monthlyRevenue = (paymentsResp.data || [])
