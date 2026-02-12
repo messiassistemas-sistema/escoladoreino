@@ -241,6 +241,7 @@ export default function PortalDashboard() {
           </div>
         </motion.div>
 
+
         {/* Admin Debug Message */}
         {isAdmin && availableCourses.length === 0 && (
           <motion.div
@@ -250,8 +251,7 @@ export default function PortalDashboard() {
           >
             <p className="text-xs font-bold text-yellow-600/80 uppercase tracking-widest mb-1">Dica de Admin</p>
             <p className="text-sm text-muted-foreground">
-              A seção de matrículas não apareceu porque a tabela <code className="text-primary font-bold">courses</code> está vazia ou não há cursos ativos disponíveis.
-              Cadastre um curso com <code className="text-emerald-500 font-bold">active: true</code> para testar.
+              A seção de matrícula não apareceu. Verifique se o curso está com <code className="text-emerald-500 font-bold">Matrículas Abertas</code> ativado no <strong>Editor do Site</strong>.
             </p>
           </motion.div>
         )}

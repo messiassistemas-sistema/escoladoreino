@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { landingService } from "./landingService";
 
 export interface Course {
     id: string;
@@ -36,26 +37,31 @@ export const coursesService = {
         // 2. Verificar se o aluno tem algum curso em andamento (não concluído e não pendente)
         const hasActiveCourse = enrollments.some(e => e.status === 'active' && !e.completed_at);
 
-        // 3. Buscar todos os cursos ativos com matrículas abertas
-        const { data: allCourses, error: coursesError } = await supabase
-            .from("courses")
-            .select("*")
-            .eq("active", true)
-            .order("created_at", { ascending: true });
+        // 3. Buscar os cursos do landing_page_content (JSON)
+        const landingContent = await landingService.getContent();
+        const allCourses = (landingContent.courses_data || []).map((c, index) => ({
+            id: c.title.toLowerCase().replace(/\s+/g, '-'), // ID gerado a partir do título para o JSON
+            title: c.title,
+            description: c.description,
+            price: c.price || 35,
+            thumbnail_url: null,
+            active: c.available !== false,
+            created_at: new Date().toISOString()
+        }));
 
-        if (coursesError) throw coursesError;
+        const activeCourses = allCourses.filter(c => c.active);
 
-        console.log(`[DEBUG] Cursos Ativos: ${allCourses?.length || 0}. Matrículas do Aluno: ${enrollments?.length || 0}`);
+        console.log(`[DEBUG] Cursos Ativos (JSON): ${activeCourses.length}. Matrículas: ${enrollments?.length || 0}`);
 
-        // 4. Filtrar cursos que o aluno ainda não está matriculado (nem pendente, nem ativo)
-        const enrolledCourseIds = enrollments.map(e => e.course_id);
-        const nextCourses = (allCourses as Course[]).filter(c => !enrolledCourseIds.includes(c.id));
+        // 4. Filtrar cursos que o aluno ainda não está matriculado
+        const enrolledCourseTitles = enrollments.map(e => e.course_id.toLowerCase()); // Usando ID gerado
+        const nextCourses = activeCourses.filter(c => !enrolledCourseTitles.includes(c.id));
 
         // 5. Retornar apenas o PRÓXIMO curso na sequência
         if (nextCourses.length > 0) {
             return [{
                 ...nextCourses[0],
-                isLocked: hasActiveCourse // Bloqueado se houver curso ativo
+                isLocked: hasActiveCourse
             }];
         }
 
