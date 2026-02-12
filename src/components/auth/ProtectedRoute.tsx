@@ -1,36 +1,26 @@
 
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/contexts/PermissionsContext";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect } from "react";
 
-interface ProtectedRouteProps {
+export const ProtectedRoute = ({
+    adminOnly = false,
+    allowedRoles = [],
+    requiredPermission
+}: {
     adminOnly?: boolean;
-}
-
-export const ProtectedRoute = ({ adminOnly = false, allowedRoles = [] }: { adminOnly?: boolean; allowedRoles?: string[] }) => {
-    const { user, isAdmin, role, loading } = useAuth();
+    allowedRoles?: string[];
+    requiredPermission?: string;
+}) => {
+    const { user, isAdmin, role, loading: authLoading } = useAuth();
+    const { hasPermission, isLoading: permissionsLoading } = usePermissions();
     const location = useLocation();
     const { toast } = useToast();
 
-    // Side effect for checking access
-    useEffect(() => {
-        if (!loading && user) {
-            const hasAccess = (adminOnly ? isAdmin : true) &&
-                (allowedRoles.length > 0 ? (role && (allowedRoles.includes(role) || role === 'admin')) : true);
-
-            if (!hasAccess) {
-                toast({
-                    title: "Acesso Negado",
-                    description: "Você não tem permissão para acessar esta área.",
-                    variant: "destructive"
-                });
-            }
-        }
-    }, [loading, user, isAdmin, role, adminOnly, allowedRoles, toast]);
-
-    if (loading) {
+    if (authLoading || permissionsLoading) {
         return (
             <div className="flex h-screen items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -47,8 +37,18 @@ export const ProtectedRoute = ({ adminOnly = false, allowedRoles = [] }: { admin
     }
 
     if (allowedRoles.length > 0) {
-        // Admin always has access. If not admin, check if user role is in allowedRoles
         if (role !== 'admin' && (!role || !allowedRoles.includes(role))) {
+            return <Navigate to="/" replace />;
+        }
+    }
+
+    if (requiredPermission) {
+        if (!hasPermission(requiredPermission)) {
+            toast({
+                title: "Acesso Negado",
+                description: "Você não tem permissão para acessar este recurso.",
+                variant: "destructive"
+            });
             return <Navigate to="/" replace />;
         }
     }

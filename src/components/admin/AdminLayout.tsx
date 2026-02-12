@@ -22,7 +22,8 @@ import {
   ChevronDown,
   Mail,
   HelpCircle,
-  MessageSquare
+  MessageSquare,
+  Shield
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -38,44 +39,46 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/contexts/PermissionsContext";
 
 const sidebarLinks = [
   {
     group: "Visão Geral", links: [
-      { href: "/admin", label: "Dashboard", icon: LayoutDashboard, allowedRoles: ['admin', 'secretary', 'treasurer', 'teacher'] },
-      { href: "/admin/site", label: "Editor do Site", icon: Layout, allowedRoles: ['admin'] },
-      { href: "/admin/mensagens", label: "Mensagens", icon: Mail, allowedRoles: ['admin', 'secretary'] },
+      { href: "/admin", label: "Dashboard", icon: LayoutDashboard, permission: "dashboard.view" },
+      { href: "/admin/site", label: "Editor do Site", icon: Layout, permission: "site.edit" },
+      { href: "/admin/mensagens", label: "Mensagens", icon: Mail, permission: "messages.view" },
     ]
   },
   {
     group: "Acadêmico", links: [
-      { href: "/admin/turmas", label: "Gestão de Turmas", icon: School, allowedRoles: ['admin', 'secretary', 'teacher'] },
-      { href: "/admin/disciplinas", label: "Disciplinas", icon: BookOpen, allowedRoles: ['admin', 'secretary'] },
-      { href: "/admin/aulas", label: "Cronograma de Aulas", icon: Calendar, allowedRoles: ['admin', 'secretary', 'teacher'] },
-      { href: "/admin/avisos", label: "Mural de Avisos", icon: Bell, allowedRoles: ['admin', 'secretary', 'teacher'] },
-      { href: "/admin/comunicados", label: "Disparo WhatsApp", icon: MessageSquare, allowedRoles: ['admin', 'secretary'] },
+      { href: "/admin/turmas", label: "Gestão de Turmas", icon: School, permission: "classes.manage" },
+      { href: "/admin/disciplinas", label: "Disciplinas", icon: BookOpen, permission: "subjects.manage" },
+      { href: "/admin/aulas", label: "Cronograma de Aulas", icon: Calendar, permission: "schedule.view" },
+      { href: "/admin/avisos", label: "Mural de Avisos", icon: Bell, permission: "notices.manage" },
+      { href: "/admin/comunicados", label: "Disparo WhatsApp", icon: MessageSquare, permission: "whatsapp.send" },
     ]
   },
   {
     group: "Pessoas", links: [
-      { href: "/admin/alunos", label: "Alunos", icon: Users, allowedRoles: ['admin', 'secretary', 'teacher', 'treasurer'] },
-      { href: "/admin/matriculas-pendentes", label: "Matrículas Pendentes", icon: UserCheck, allowedRoles: ['admin', 'secretary', 'treasurer'] },
-      { href: "/admin/professores", label: "Professores", icon: GraduationCap, allowedRoles: ['admin', 'secretary'] },
-      { href: "/admin/presenca", label: "Chamada e Frequência", icon: UserCheck, allowedRoles: ['admin', 'secretary', 'teacher'] },
-      { href: "/admin/notas", label: "Lançamento de Notas", icon: ClipboardList, allowedRoles: ['admin', 'secretary', 'teacher'] },
+      { href: "/admin/alunos", label: "Alunos", icon: Users, permission: "students.view" },
+      { href: "/admin/matriculas-pendentes", label: "Matrículas Pendentes", icon: UserCheck, permission: "enrollments.view" },
+      { href: "/admin/professores", label: "Professores", icon: GraduationCap, permission: "teachers.view" },
+      { href: "/admin/presenca", label: "Chamada e Frequência", icon: UserCheck, permission: "attendance.manage" },
+      { href: "/admin/notas", label: "Lançamento de Notas", icon: ClipboardList, permission: "grades.manage" },
     ]
   },
   {
     group: "Recursos e Financeiro", links: [
-      { href: "/admin/materiais", label: "Materiais Didáticos", icon: FileText, allowedRoles: ['admin', 'secretary', 'teacher'] },
-      { href: "/admin/pagamentos", label: "Pagamentos", icon: CreditCard, allowedRoles: ['admin', 'secretary', 'treasurer'] },
-      { href: "/admin/usuarios", label: "Usuários", icon: Users, allowedRoles: ['admin'] },
-      { href: "/admin/configuracoes", label: "Configurações", icon: Settings, allowedRoles: ['admin'] },
+      { href: "/admin/materiais", label: "Materiais Didáticos", icon: FileText, permission: "materials.manage" },
+      { href: "/admin/pagamentos", label: "Pagamentos", icon: CreditCard, permission: "financial.view" },
+      { href: "/admin/usuarios", label: "Usuários", icon: Users, permission: "users.manage" },
+      { href: "/admin/configuracoes", label: "Configurações", icon: Settings, permission: "settings.manage" },
+      { href: "/admin/permissoes", label: "Permissões", icon: Shield, permission: "permissions.manage" },
     ]
   },
   {
     group: "Suporte", links: [
-      { href: "/admin/ajuda", label: "Central de Ajuda", icon: HelpCircle, allowedRoles: ['admin', 'secretary', 'treasurer', 'teacher'] },
+      { href: "/admin/ajuda", label: "Central de Ajuda", icon: HelpCircle, permission: "help.view" },
     ]
   },
 ];
@@ -109,6 +112,7 @@ export function AdminLayout({ children, title, description }: AdminLayoutProps) 
 
   // Auth context
   const { user, signOut } = useAuth();
+  const { hasPermission } = usePermissions();
 
   const admin = {
     name: user?.user_metadata?.name || "Administrador",
@@ -175,10 +179,9 @@ export function AdminLayout({ children, title, description }: AdminLayoutProps) 
         {/* Navigation */}
         <nav className="flex-1 space-y-6 px-4 py-6 overflow-y-auto custom-scrollbar">
           {sidebarLinks.map((group, i) => {
-            // Filter links based on role
+            // Filter links based on permissions
             const visibleLinks = group.links.filter(link => {
-              if (admin.role === 'admin') return true;
-              return link.allowedRoles.includes(admin.role);
+              return hasPermission(link.permission);
             });
 
             if (visibleLinks.length === 0) return null;

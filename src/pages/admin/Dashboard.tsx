@@ -10,11 +10,16 @@ import {
   CheckCircle2,
   DollarSign,
   BarChart3,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  Activity,
+  UserMinus,
+  UserCheck
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { DashboardQuickActions } from "@/components/admin/dashboard/DashboardQuickActions";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,16 +34,23 @@ import {
   PieChart,
   Pie,
   Cell,
+  AreaChart,
+  Area
 } from "recharts";
 
 const COLORS = ["#10b981", "#f59e0b", "#ef4444", "#3b82f6"];
+const RETENTION_COLORS = ["#3b82f6", "#10b981", "#ef4444"];
 
 export default function AdminDashboard() {
   const { data: dashboardData, isLoading } = useQuery({
-    queryKey: ["admin-stats-v2"],
+    queryKey: ["admin-stats-v3"],
     queryFn: async () => {
       const now = new Date();
       const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+      // Get last 7 days for attendance trend
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
       const [
         studentsResp,
@@ -47,7 +59,8 @@ export default function AdminDashboard() {
         pendingStudentsResp,
         paymentsResp,
         attendanceResp,
-        monthlyGrowthResp
+        monthlyGrowthResp,
+        attendanceTrendgResp
       ] = await Promise.all([
         supabase.from("students").select("*", { count: "exact", head: true }),
         supabase.from("teachers").select("*", { count: "exact", head: true }),
@@ -55,15 +68,35 @@ export default function AdminDashboard() {
         supabase.from("students").select("*", { count: "exact", head: true }).eq("status", "pendente"),
         supabase.from("payments").select("amount, status, created_at").gte("created_at", firstDayOfMonth),
         supabase.from("students").select("attendance_rate"),
-        supabase.from("students").select("created_at")
+        supabase.from("students").select("created_at"),
+        supabase.from("attendance_records")
+          .select("created_at, status")
+          .gte("created_at", sevenDaysAgo.toISOString())
       ]);
 
-      // Calculate Revenue
+      // --- Financials ---
       const monthlyRevenue = (paymentsResp.data || [])
         .filter(p => p.status === "pago" || p.status === "approved" || p.status === "paid")
         .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
 
-      // Calculate Average Attendance
+      const allStudents = studentsResp.count || 0;
+      // Fetch actual active/inactive counts if possible, but we only have head response for all.
+      // We need to fetch basic data to categorize. 
+      // Optimization: Fetch just status column for all students
+      const { data: allStudentStatuses } = await supabase.from("students").select("status");
+
+      const activeStudentsCount = (allStudentStatuses || []).filter(s => s.status === 'ativo').length;
+      const inactiveStudentsCount = (allStudentStatuses || []).filter(s => s.status === 'inativo' || s.status === 'cancelado').length;
+      const pendingCount = (allStudentStatuses || []).filter(s => s.status === 'pendente').length;
+
+      const EST_TUITION = 150;
+      const expectedRevenue = activeStudentsCount * EST_TUITION;
+
+      const defaultRate = expectedRevenue > 0
+        ? Math.max(0, ((expectedRevenue - monthlyRevenue) / expectedRevenue) * 100).toFixed(1)
+        : "0";
+
+      // --- Attendance ---
       const validAttendance = (attendanceResp.data || [])
         .filter(s => s.attendance_rate !== null)
         .map(s => Number(s.attendance_rate));
@@ -71,7 +104,35 @@ export default function AdminDashboard() {
         ? (validAttendance.reduce((a, b) => a + b, 0) / validAttendance.length).toFixed(1)
         : "0";
 
-      // Payment Status Distribution
+      // Attendance Trend (Daily Present Count)
+      const trendMap: Record<string, number> = {};
+      const dates = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const key = d.toLocaleDateString('pt-BR', { weekday: 'short' });
+        dates.push(key);
+        trendMap[key] = 0; // init
+      }
+
+      (attendanceTrendgResp.data || []).forEach(record => {
+        if (record.status === 'presente') {
+          const d = new Date(record.created_at || new Date());
+          const key = d.toLocaleDateString('pt-BR', { weekday: 'short' });
+          if (trendMap[key] !== undefined) trendMap[key]++;
+        }
+      });
+      const attendanceTrendData = dates.map(d => ({ name: d, present: trendMap[d] }));
+
+
+      // --- Retention Funnel Data ---
+      const retentionData = [
+        { name: "Total", value: allStudents, fill: "#3b82f6" }, // Blue
+        { name: "Ativos", value: activeStudentsCount, fill: "#10b981" }, // Green
+        { name: "Inativos", value: inactiveStudentsCount, fill: "#ef4444" }, // Red
+      ];
+
+      // --- Payment Distribution ---
       const paymentStatusMap: Record<string, number> = {};
       (paymentsResp.data || []).forEach(p => {
         const status = p.status === "approved" || p.status === "paid" ? "pago" : (p.status || "pendente");
@@ -79,7 +140,7 @@ export default function AdminDashboard() {
       });
       const paymentDistribution = Object.entries(paymentStatusMap).map(([name, value]) => ({ name, value }));
 
-      // Monthly Growth (last 6 months)
+      // --- Growth ---
       const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
       const growthMap: Record<string, number> = {};
       (monthlyGrowthResp.data || []).forEach(s => {
@@ -93,13 +154,22 @@ export default function AdminDashboard() {
 
       return {
         stats: [
-          { label: "Total de Alunos", value: studentsResp.count?.toString() || "0", icon: Users, trend: "Cadastrados", color: "text-blue-600" },
-          { label: "Receita (Mês)", value: `R$ ${monthlyRevenue.toLocaleString('pt-BR')}`, icon: DollarSign, trend: "Este mês", color: "text-green-600" },
-          { label: "Presença Média", value: `${avgAttendance}%`, icon: CheckCircle2, trend: "Global", color: "text-purple-600" },
-          { label: "Pendentes", value: pendingStudentsResp.count?.toString() || "0", icon: AlertCircle, trend: "Aguardando", color: "text-orange-600" },
+          { label: "Total de Alunos", value: studentsResp.count?.toString() || "0", icon: Users, trend: "Cadastrados", color: "text-blue-600", bg: "bg-blue-100 dark:bg-blue-900/20" },
+          { label: "Receita (Mês)", value: `R$ ${monthlyRevenue.toLocaleString('pt-BR')}`, icon: DollarSign, trend: "Realizado", color: "text-green-600", bg: "bg-green-100 dark:bg-green-900/20" },
+          { label: "Inadimplência Est.", value: `${defaultRate}%`, icon: AlertCircle, trend: "Estimado", color: "text-red-500", bg: "bg-red-100 dark:bg-red-900/20" },
+          { label: "Presença Média", value: `${avgAttendance}%`, icon: CheckCircle2, trend: "Global", color: "text-purple-600", bg: "bg-purple-100 dark:bg-purple-900/20" },
         ],
         growthData,
-        paymentDistribution
+        paymentDistribution,
+        financials: {
+          expected: expectedRevenue,
+          realized: monthlyRevenue,
+          gap: Math.max(0, expectedRevenue - monthlyRevenue)
+        },
+        academic: {
+          trend: attendanceTrendData,
+          retention: retentionData
+        }
       };
     },
   });
@@ -156,52 +226,87 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Charts Row */}
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Enrollment Growth */}
+        {/* Charts Row 1: Financials & Payments */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {/* Financial Breakdown */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.4 }}
+            transition={{ delay: 0.5 }}
+            className="col-span-1 md:col-span-2"
           >
-            <Card className="border-none shadow-sm h-[400px]">
+            <Card className="border-none shadow-sm h-full min-h-[300px]">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-primary" />
-                  Crescimento de Matrículas
+                  <TrendingUp className="h-5 w-5 text-emerald-500" />
+                  Saúde Financeira (Estimada)
                 </CardTitle>
-                <CardDescription>Novos alunos por mês</CardDescription>
+                <CardDescription>Receita Realizada vs. Potencial Esperado</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[280px] w-full">
+                <div className="h-[200px] w-full mt-4">
                   {isLoading ? (
                     <Skeleton className="h-full w-full" />
                   ) : (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={dashboardData?.growthData}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                        <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                        <YAxis fontSize={12} tickLine={false} axisLine={false} />
-                        <Tooltip
-                          contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                          cursor={{ fill: 'rgba(0,0,0,0.05)' }}
-                        />
-                        <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={40} />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full items-center">
+                      {/* Visual Bar */}
+                      <div className="col-span-2 space-y-6">
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm font-medium">
+                            <span className="text-muted-foreground">Realizado</span>
+                            <span className="text-emerald-600 dark:text-emerald-400">
+                              {((dashboardData?.financials?.realized / dashboardData?.financials?.expected) * 100 || 0).toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="h-4 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-emerald-500 rounded-full transition-all duration-1000 ease-out"
+                              style={{ width: `${Math.min(100, (dashboardData?.financials?.realized / dashboardData?.financials?.expected) * 100 || 0)}%` }}
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground text-right">
+                            Meta: R$ {dashboardData?.financials?.expected?.toLocaleString('pt-BR') || '0,00'}
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 pt-2">
+                          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-100 dark:border-emerald-900/50">
+                            <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80 font-bold uppercase">Entrada Real</p>
+                            <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
+                              R$ {dashboardData?.financials?.realized.toLocaleString('pt-BR')}
+                            </p>
+                          </div>
+                          <div className="p-3 bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-100 dark:border-red-900/50">
+                            <p className="text-xs text-red-600/80 dark:text-red-400/80 font-bold uppercase">Gap (Inadimplência)</p>
+                            <p className="text-lg font-bold text-red-600 dark:text-red-400">
+                              R$ {dashboardData?.financials?.gap.toLocaleString('pt-BR')}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Insight Card */}
+                      <div className="hidden md:flex flex-col justify-center items-center text-center p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <AlertCircle className="h-8 w-8 text-slate-400 mb-2" />
+                        <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">
+                          Seu gap de receita está em <span className="text-red-500 dark:text-red-400 font-bold">R$ {dashboardData?.financials?.gap.toLocaleString('pt-BR')}</span>.
+                        </p>
+                        <Button variant="link" size="sm" className="mt-2 text-primary h-auto p-0">Ver Inadimplentes</Button>
+                      </div>
+                    </div>
                   )}
                 </div>
               </CardContent>
             </Card>
           </motion.div>
 
-          {/* Payment Status */}
+          {/* Payment Status Pie Chart */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.5 }}
           >
-            <Card className="border-none shadow-sm h-[400px]">
+            <Card className="border-none shadow-sm h-full">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <PieChartIcon className="h-5 w-5 text-primary" />
@@ -210,7 +315,7 @@ export default function AdminDashboard() {
                 <CardDescription>Distribuição de transações</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[280px] w-full flex items-center justify-center">
+                <div className="h-[200px] w-full flex items-center justify-center">
                   {isLoading ? (
                     <Skeleton className="h-48 w-48 rounded-full" />
                   ) : (
@@ -218,8 +323,8 @@ export default function AdminDashboard() {
                       <PieChart>
                         <Pie
                           data={dashboardData?.paymentDistribution}
-                          innerRadius={60}
-                          outerRadius={80}
+                          innerRadius={50}
+                          outerRadius={70}
                           paddingAngle={5}
                           dataKey="value"
                         >
@@ -247,54 +352,163 @@ export default function AdminDashboard() {
           </motion.div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Recent Enrollments */}
+        {/* Charts Row 2: Business Metrics */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {/* Enrollment Growth */}
           <motion.div
-            className="lg:col-span-2"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.4 }}
+          >
+            <Card className="border-none shadow-sm h-full">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  Crescimento
+                </CardTitle>
+                <CardDescription>Novos alunos (6 meses)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[200px] w-full">
+                  {isLoading ? (
+                    <Skeleton className="h-full w-full" />
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={dashboardData?.growthData}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                        <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} />
+                        <YAxis fontSize={10} tickLine={false} axisLine={false} width={20} />
+                        <Tooltip
+                          contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                          cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                        />
+                        <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={30} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* New Academic Pulse - Attendance Trend */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.5 }}
+          >
+            <Card className="border-none shadow-sm h-full">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-purple-600" />
+                  Frequência (7 Dias)
+                </CardTitle>
+                <CardDescription>Alunos presentes por dia</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[200px] w-full">
+                  {isLoading ? (
+                    <Skeleton className="h-full w-full" />
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={dashboardData?.academic?.trend}>
+                        <defs>
+                          <linearGradient id="colorPresent" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8} />
+                            <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                        <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} />
+                        <YAxis fontSize={10} tickLine={false} axisLine={false} width={20} />
+                        <Tooltip
+                          contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                        />
+                        <Area type="monotone" dataKey="present" stroke="#8884d8" fillOpacity={1} fill="url(#colorPresent)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* New Academic Pulse - Retention Funnel */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.6 }}
+          >
+            <Card className="border-none shadow-sm h-full">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-blue-600" />
+                  Retenção de Alunos
+                </CardTitle>
+                <CardDescription>Panorama de Ativos vs. Inativos</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[200px] w-full">
+                  {isLoading ? (
+                    <Skeleton className="h-full w-full" />
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart layout="vertical" data={dashboardData?.academic?.retention}>
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
+                        <XAxis type="number" fontSize={10} hide />
+                        <YAxis dataKey="name" type="category" width={60} fontSize={11} tickLine={false} axisLine={false} />
+                        <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                        <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={30}>
+                          {dashboardData?.academic?.retention.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+
+        {/* Bottom Row - Recent & Quick Facts */}
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Recent Enrollments moved to bottom 2-col layout */}
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
           >
-            <Card className="border-none shadow-sm">
+            <Card className="border-none shadow-sm h-full">
               <CardHeader>
                 <CardTitle className="font-display">Matrículas Recentes</CardTitle>
-                <CardDescription>Últimos 5 alunos que se cadastraram</CardDescription>
+                <CardDescription>Últimos 5 alunos</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {recentStudents.map((enrollment) => (
                     <div
                       key={enrollment.id}
-                      className="flex items-center justify-between rounded-xl border border-border p-4 hover:bg-muted/30 transition-colors"
+                      className="flex items-center justify-between rounded-xl border border-border p-3 hover:bg-muted/30 transition-colors"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 font-display font-semibold text-primary">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 font-display font-semibold text-primary text-xs">
                           {enrollment.name.charAt(0)}
                         </div>
                         <div>
-                          <p className="font-medium text-sm">{enrollment.name}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="font-medium text-sm truncate max-w-[100px]">{enrollment.name.split(' ')[0]}</p>
+                          <p className="text-[10px] text-muted-foreground truncate max-w-[100px]">
                             {enrollment.email}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <Badge
-                          variant={
-                            enrollment.status === "ativo" ? "default" : "secondary"
-                          }
-                          className={
-                            enrollment.status === "ativo"
-                              ? "bg-emerald-500/10 text-emerald-600 border-none hover:bg-emerald-500/20"
-                              : "border-none"
-                          }
-                        >
-                          {enrollment.status === "ativo" ? "Ativa" : enrollment.status}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                          {new Date(enrollment.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
+                      <Badge
+                        variant={enrollment.status === "ativo" ? "default" : "secondary"}
+                        className="text-[10px] h-5"
+                      >
+                        {enrollment.status === "ativo" ? "Ativa" : enrollment.status}
+                      </Badge>
                     </div>
                   ))}
                 </div>
@@ -314,17 +528,21 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm opacity-90 leading-relaxed">
-                  Seu dashboard estratégico está configurado para mostrar indicadores de performance em tempo real.
+                  Painel Pedagógico ativado. Monitore a frequência semanal para evitar evasão.
                 </p>
-                <div className="pt-4 border-t border-white/10 uppercase tracking-widest text-[10px] font-bold opacity-60">Próximos Passos</div>
+                <div className="pt-4 border-t border-white/10 uppercase tracking-widest text-[10px] font-bold opacity-60">Ações Sugeridas</div>
                 <ul className="space-y-2 text-xs">
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="h-3 w-3" />
-                    Monitorar inadimplência
+                    Cobrar inadimplentes ({dashboardData?.stats[2]?.value || '0%'})
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-3 w-3" />
-                    Gerenciar matrículas pendentes
+                    <Activity className="h-3 w-3" />
+                    Verificar baixas frequências (Heatmap)
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <UserMinus className="h-3 w-3" />
+                    Contatar inativos ({dashboardData?.academic?.retention[2]?.value || 0})
                   </li>
                 </ul>
               </CardContent>
@@ -335,6 +553,7 @@ export default function AdminDashboard() {
           </motion.div>
         </div>
       </div>
-    </AdminLayout >
+      <DashboardQuickActions />
+    </AdminLayout>
   );
 }

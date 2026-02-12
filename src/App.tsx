@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { PermissionsProvider } from "@/contexts/PermissionsContext";
 
 // Public Pages
 import Index from "./pages/Index";
@@ -44,6 +45,7 @@ import AdminEditorSite from "./pages/admin/EditorSite";
 import AdminUsuarios from "./pages/admin/Usuarios";
 import AdminHelpCenter from "./pages/admin/HelpCenter";
 import AdminComunicados from "./pages/admin/AdminComunicados";
+import AdminPermissionsManagement from "./pages/admin/PermissionsManagement";
 
 // Login Page
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -88,71 +90,75 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <ThemeProvider>
-        <TooltipProvider>
-          <FaviconUpdater />
-          <Toaster />
-          <SonnerToaster />
-          <ErrorBoundary>
-            <BrowserRouter>
-              <Routes>
-                {/* Public Routes */}
-                <Route path="/" element={<Index />} />
-                <Route path="/sobre" element={<Sobre />} />
-                <Route path="/cursos" element={<Cursos />} />
-                <Route path="/contato" element={<Contato />} />
-                <Route path="/matricula" element={<Matricula />} />
-                <Route path="/status-matricula" element={<StatusMatricula />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
+      <PermissionsProvider>
+        <ThemeProvider>
+          <TooltipProvider>
+            <FaviconUpdater />
+            <Toaster />
+            <SonnerToaster />
+            <ErrorBoundary>
+              <BrowserRouter>
+                <Routes>
+                  {/* Public Routes */}
+                  <Route path="/" element={<Index />} />
+                  <Route path="/sobre" element={<Sobre />} />
+                  <Route path="/cursos" element={<Cursos />} />
+                  <Route path="/contato" element={<Contato />} />
+                  <Route path="/matricula" element={<Matricula />} />
+                  <Route path="/status-matricula" element={<StatusMatricula />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
 
-                {/* Protected Portal Routes */}
-                <Route element={<ProtectedRoute />}>
-                  <Route path="/portal" element={<PortalDashboard />} />
-                  <Route path="/portal/notas" element={<PortalNotas />} />
-                  <Route path="/portal/presenca" element={<PortalPresenca />} />
-                  <Route path="/portal/calendario" element={<PortalCalendario />} />
-                  <Route path="/portal/materiais" element={<PortalMateriais />} />
-                  <Route path="/portal/avisos" element={<PortalAvisos />} />
-                  <Route path="/portal/ajuda" element={<PortalHelpCenter />} />
-                  <Route path="/portal/perfil" element={<PortalPerfil />} />
-                </Route>
-
-                {/* Protected Admin Routes */}
-                <Route element={<ProtectedRoute allowedRoles={['admin', 'secretary', 'treasurer', 'teacher']} />}>
-                  <Route path="/admin" element={<AdminDashboard />} />
-                  <Route path="/admin/turmas" element={<AdminTurmas />} />
-                  <Route path="/admin/alunos" element={<AdminAlunos />} />
-                  <Route path="/admin/matriculas-pendentes" element={<AdminPendingStudents />} />
-                  <Route path="/admin/professores" element={<AdminProfessores />} />
-                  <Route path="/admin/disciplinas" element={<AdminDisciplinas />} />
-                  <Route path="/admin/aulas" element={<AdminAulas />} />
-                  <Route path="/admin/presenca" element={<AdminPresenca />} />
-                  <Route path="/admin/notas" element={<AdminNotas />} />
-                  <Route path="/admin/materiais" element={<AdminMateriais />} />
-                  <Route path="/admin/avisos" element={<AdminAvisos />} />
-                  <Route path="/admin/pagamentos" element={<AdminPagamentos />} />
-                  <Route path="/admin/ajuda" element={<AdminHelpCenter />} />
-                  {/* STRICT ADMIN ONLY ROUTES */}
-                  <Route element={<ProtectedRoute adminOnly />}>
-                    <Route path="/admin/site" element={<AdminEditorSite />} />
-                    <Route path="/admin/usuarios" element={<AdminUsuarios />} />
-                    <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
+                  {/* Protected Portal Routes */}
+                  <Route element={<ProtectedRoute />}>
+                    <Route path="/portal" element={<PortalDashboard />} />
+                    <Route path="/portal/notas" element={<PortalNotas />} />
+                    <Route path="/portal/presenca" element={<PortalPresenca />} />
+                    <Route path="/portal/calendario" element={<PortalCalendario />} />
+                    <Route path="/portal/materiais" element={<PortalMateriais />} />
+                    <Route path="/portal/avisos" element={<PortalAvisos />} />
+                    <Route path="/portal/ajuda" element={<PortalHelpCenter />} />
+                    <Route path="/portal/perfil" element={<PortalPerfil />} />
                   </Route>
 
-                  <Route path="/admin/mensagens" element={<AdminMensagens />} />
-                  <Route path="/admin/comunicados" element={<AdminComunicados />} />
-                </Route>
+                  {/* Protected Admin Routes */}
+                  <Route element={<ProtectedRoute allowedRoles={['admin', 'secretary', 'treasurer', 'teacher']} />}>
+                    <Route path="/admin" element={<AdminDashboard />} />
+                    <Route path="/admin/turmas" element={<AdminTurmas />} />
+                    <Route path="/admin/alunos" element={<AdminAlunos />} />
+                    <Route path="/admin/matriculas-pendentes" element={<AdminPendingStudents />} />
+                    <Route path="/admin/professores" element={<AdminProfessores />} />
+                    <Route path="/admin/disciplinas" element={<AdminDisciplinas />} />
+                    <Route path="/admin/aulas" element={<AdminAulas />} />
+                    <Route path="/admin/presenca" element={<AdminPresenca />} />
+                    <Route path="/admin/notas" element={<AdminNotas />} />
+                    <Route path="/admin/materiais" element={<AdminMateriais />} />
+                    <Route path="/admin/avisos" element={<AdminAvisos />} />
+                    <Route path="/admin/pagamentos" element={<AdminPagamentos />} />
+                    <Route path="/admin/ajuda" element={<AdminHelpCenter />} />
+                    {/* STRICT ADMIN ONLY ROUTES */}
+                    <Route element={<ProtectedRoute adminOnly />}>
+                      <Route path="/admin/site" element={<AdminEditorSite />} />
+                      <Route path="/admin/usuarios" element={<AdminUsuarios />} />
+                      <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
+                      <Route path="/admin/permissoes" element={<AdminPermissionsManagement />} />
+                    </Route>
 
-                {/* Catch-all */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </ErrorBoundary>
-        </TooltipProvider>
-      </ThemeProvider>
+                    <Route path="/admin/mensagens" element={<AdminMensagens />} />
+                    <Route path="/admin/comunicados" element={<AdminComunicados />} />
+                  </Route>
+
+                  {/* Catch-all */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
+            </ErrorBoundary>
+          </TooltipProvider>
+        </ThemeProvider>
+
+      </PermissionsProvider>
     </AuthProvider>
-  </QueryClientProvider>
+  </QueryClientProvider >
 );
 
 export default App;
