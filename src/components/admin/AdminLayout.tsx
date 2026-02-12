@@ -42,40 +42,40 @@ import { useAuth } from "@/contexts/AuthContext";
 const sidebarLinks = [
   {
     group: "Visão Geral", links: [
-      { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/admin/site", label: "Editor do Site", icon: Layout },
-      { href: "/admin/mensagens", label: "Mensagens", icon: Mail },
+      { href: "/admin", label: "Dashboard", icon: LayoutDashboard, allowedRoles: ['admin', 'secretary', 'treasurer', 'teacher'] },
+      { href: "/admin/site", label: "Editor do Site", icon: Layout, allowedRoles: ['admin'] },
+      { href: "/admin/mensagens", label: "Mensagens", icon: Mail, allowedRoles: ['admin', 'secretary'] },
     ]
   },
   {
     group: "Acadêmico", links: [
-      { href: "/admin/turmas", label: "Gestão de Turmas", icon: School },
-      { href: "/admin/disciplinas", label: "Disciplinas", icon: BookOpen },
-      { href: "/admin/aulas", label: "Cronograma de Aulas", icon: Calendar },
-      { href: "/admin/avisos", label: "Mural de Avisos", icon: Bell },
-      { href: "/admin/comunicados", label: "Disparo WhatsApp", icon: MessageSquare },
+      { href: "/admin/turmas", label: "Gestão de Turmas", icon: School, allowedRoles: ['admin', 'secretary', 'teacher'] },
+      { href: "/admin/disciplinas", label: "Disciplinas", icon: BookOpen, allowedRoles: ['admin', 'secretary'] },
+      { href: "/admin/aulas", label: "Cronograma de Aulas", icon: Calendar, allowedRoles: ['admin', 'secretary', 'teacher'] },
+      { href: "/admin/avisos", label: "Mural de Avisos", icon: Bell, allowedRoles: ['admin', 'secretary', 'teacher'] },
+      { href: "/admin/comunicados", label: "Disparo WhatsApp", icon: MessageSquare, allowedRoles: ['admin', 'secretary'] },
     ]
   },
   {
     group: "Pessoas", links: [
-      { href: "/admin/alunos", label: "Alunos", icon: Users },
-      { href: "/admin/matriculas-pendentes", label: "Matrículas Pendentes", icon: UserCheck },
-      { href: "/admin/professores", label: "Professores", icon: GraduationCap },
-      { href: "/admin/presenca", label: "Chamada e Frequência", icon: UserCheck },
-      { href: "/admin/notas", label: "Lançamento de Notas", icon: ClipboardList },
+      { href: "/admin/alunos", label: "Alunos", icon: Users, allowedRoles: ['admin', 'secretary', 'teacher', 'treasurer'] },
+      { href: "/admin/matriculas-pendentes", label: "Matrículas Pendentes", icon: UserCheck, allowedRoles: ['admin', 'secretary', 'treasurer'] },
+      { href: "/admin/professores", label: "Professores", icon: GraduationCap, allowedRoles: ['admin', 'secretary'] },
+      { href: "/admin/presenca", label: "Chamada e Frequência", icon: UserCheck, allowedRoles: ['admin', 'secretary', 'teacher'] },
+      { href: "/admin/notas", label: "Lançamento de Notas", icon: ClipboardList, allowedRoles: ['admin', 'secretary', 'teacher'] },
     ]
   },
   {
     group: "Recursos e Financeiro", links: [
-      { href: "/admin/materiais", label: "Materiais Didáticos", icon: FileText },
-      { href: "/admin/pagamentos", label: "Pagamentos", icon: CreditCard },
-      { href: "/admin/usuarios", label: "Usuários", icon: Users },
-      { href: "/admin/configuracoes", label: "Configurações", icon: Settings },
+      { href: "/admin/materiais", label: "Materiais Didáticos", icon: FileText, allowedRoles: ['admin', 'secretary', 'teacher'] },
+      { href: "/admin/pagamentos", label: "Pagamentos", icon: CreditCard, allowedRoles: ['admin', 'secretary', 'treasurer'] },
+      { href: "/admin/usuarios", label: "Usuários", icon: Users, allowedRoles: ['admin'] },
+      { href: "/admin/configuracoes", label: "Configurações", icon: Settings, allowedRoles: ['admin'] },
     ]
   },
   {
     group: "Suporte", links: [
-      { href: "/admin/ajuda", label: "Central de Ajuda", icon: HelpCircle },
+      { href: "/admin/ajuda", label: "Central de Ajuda", icon: HelpCircle, allowedRoles: ['admin', 'secretary', 'treasurer', 'teacher'] },
     ]
   },
 ];
@@ -174,37 +174,47 @@ export function AdminLayout({ children, title, description }: AdminLayoutProps) 
 
         {/* Navigation */}
         <nav className="flex-1 space-y-6 px-4 py-6 overflow-y-auto custom-scrollbar">
-          {sidebarLinks.map((group, i) => (
-            <div key={i} className="space-y-2">
-              <p className="px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-sidebar-foreground/40">
-                {group.group}
-              </p>
-              <div className="space-y-1">
-                {group.links.map((link) => {
-                  const isActive = location.pathname === link.href;
-                  return (
-                    <Link
-                      key={link.href}
-                      to={link.href}
-                      onClick={() => setIsSidebarOpen(false)}
-                      className={cn(
-                        "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
-                        isActive
-                          ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-lg shadow-sidebar-primary/20"
-                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                      )}
-                    >
-                      <link.icon className={cn(
-                        "h-5 w-5 transition-transform duration-200 group-hover:scale-110",
-                        isActive ? "text-sidebar-primary-foreground" : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground"
-                      )} />
-                      <span className="flex-1">{link.label}</span>
-                    </Link>
-                  );
-                })}
+          {sidebarLinks.map((group, i) => {
+            // Filter links based on role
+            const visibleLinks = group.links.filter(link => {
+              if (admin.role === 'admin') return true;
+              return link.allowedRoles.includes(admin.role);
+            });
+
+            if (visibleLinks.length === 0) return null;
+
+            return (
+              <div key={i} className="space-y-2">
+                <p className="px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-sidebar-foreground/40">
+                  {group.group}
+                </p>
+                <div className="space-y-1">
+                  {visibleLinks.map((link) => {
+                    const isActive = location.pathname === link.href;
+                    return (
+                      <Link
+                        key={link.href}
+                        to={link.href}
+                        onClick={() => setIsSidebarOpen(false)}
+                        className={cn(
+                          "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                          isActive
+                            ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-lg shadow-sidebar-primary/20"
+                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        )}
+                      >
+                        <link.icon className={cn(
+                          "h-5 w-5 transition-transform duration-200 group-hover:scale-110",
+                          isActive ? "text-sidebar-primary-foreground" : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground"
+                        )} />
+                        <span className="flex-1">{link.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </nav>
 
         {/* Footer / User Profile */}

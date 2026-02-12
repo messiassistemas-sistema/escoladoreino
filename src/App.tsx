@@ -119,7 +119,7 @@ const App = () => (
                 </Route>
 
                 {/* Protected Admin Routes */}
-                <Route element={<ProtectedRoute adminOnly />}>
+                <Route element={<ProtectedRoute allowedRoles={['admin', 'secretary', 'treasurer', 'teacher']} />}>
                   <Route path="/admin" element={<AdminDashboard />} />
                   <Route path="/admin/turmas" element={<AdminTurmas />} />
                   <Route path="/admin/alunos" element={<AdminAlunos />} />
@@ -131,12 +131,15 @@ const App = () => (
                   <Route path="/admin/notas" element={<AdminNotas />} />
                   <Route path="/admin/materiais" element={<AdminMateriais />} />
                   <Route path="/admin/avisos" element={<AdminAvisos />} />
-                  <Route path="/admin/site" element={<AdminEditorSite />} />
                   <Route path="/admin/pagamentos" element={<AdminPagamentos />} />
-                  <Route path="/admin/usuarios" element={<AdminUsuarios />} />
                   <Route path="/admin/ajuda" element={<AdminHelpCenter />} />
+                  {/* STRICT ADMIN ONLY ROUTES */}
+                  <Route element={<ProtectedRoute adminOnly />}>
+                    <Route path="/admin/site" element={<AdminEditorSite />} />
+                    <Route path="/admin/usuarios" element={<AdminUsuarios />} />
+                    <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
+                  </Route>
 
-                  <Route path="/admin/configuracoes" element={<AdminConfiguracoes />} />
                   <Route path="/admin/mensagens" element={<AdminMensagens />} />
                   <Route path="/admin/comunicados" element={<AdminComunicados />} />
                 </Route>
