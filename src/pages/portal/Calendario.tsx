@@ -160,16 +160,16 @@ export default function PortalCalendario() {
                       <CardContent className="p-0">
                         <div className="flex flex-col sm:flex-row">
                           <div className="w-full sm:w-2 bg-primary transition-all group-hover:w-3" />
-                          <div className="flex-1 p-6 flex items-center justify-between gap-6">
-                            <div className="space-y-3">
+                          <div className="flex-1 min-w-0 p-4 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 overflow-hidden">
+                            <div className="space-y-3 min-w-0">
                               <div className="space-y-1">
                                 {aula.topic && (
                                   <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 block">
                                     {aula.subject?.name || "Disciplina"}
                                   </span>
                                 )}
-                                <div className="flex items-center gap-2">
-                                  <h4 className="font-display text-xl font-bold group-hover:text-primary transition-colors leading-tight">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="font-display text-lg md:text-xl font-bold group-hover:text-primary transition-colors leading-tight break-words">
                                     {aula.topic || aula.subject?.name || "Aula"}
                                   </h4>
                                   <Badge variant="outline" className="text-[9px] uppercase font-black tracking-widest px-1.5 h-4 border-primary/20 text-primary shrink-0">{aula.mode}</Badge>
@@ -178,7 +178,7 @@ export default function PortalCalendario() {
                                   <p className="text-xs text-muted-foreground font-medium">{aula.class_name}</p>
                                 )}
                               </div>
-                              <div className="flex flex-wrap items-center gap-6">
+                              <div className="flex flex-wrap items-center gap-3 md:gap-6">
                                 <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
                                   <div className="h-7 w-7 rounded-lg bg-muted flex items-center justify-center">
                                     <User className="h-3.5 w-3.5" />

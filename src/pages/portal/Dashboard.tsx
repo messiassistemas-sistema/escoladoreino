@@ -265,7 +265,7 @@ export default function PortalDashboard() {
                           <Badge className="bg-primary/90 text-[10px] font-bold">AGENDADA</Badge>
                         </div>
                       </div>
-                      <CardContent className="flex flex-1 flex-col justify-between p-4 md:p-6">
+                      <CardContent className="flex flex-1 min-w-0 flex-col justify-between p-4 md:p-6 overflow-hidden">
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
                             <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
@@ -280,7 +280,7 @@ export default function PortalDashboard() {
                               {parseLocalDate(aula.date).toLocaleDateString("pt-BR", { day: '2-digit', month: 'short' }).toUpperCase()}
                             </div>
                           </div>
-                          <h4 className="font-display text-xl font-bold leading-tight group-hover:text-primary transition-colors">
+                          <h4 className="font-display text-lg md:text-xl font-bold leading-tight group-hover:text-primary transition-colors break-words">
                             {aula.topic || aula.subject?.name || "Disciplina não definida"}
                           </h4>
                           <p className="text-sm font-medium text-muted-foreground">Horário: {aula.time}</p>
