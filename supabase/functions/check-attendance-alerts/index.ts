@@ -47,6 +47,14 @@ serve(async (req) => {
     }
 });
 
+function formatMessage(template: string, variables: Record<string, string | number>) {
+    let message = template;
+    for (const [key, value] of Object.entries(variables)) {
+        message = message.replace(new RegExp(`\\{${key}\\}`, 'g'), String(value));
+    }
+    return message;
+}
+
 async function handleDailyLateAlerts(supabase, settings) {
     const today = new Date().toISOString().split("T")[0];
 
@@ -61,8 +69,13 @@ async function handleDailyLateAlerts(supabase, settings) {
     const presentStudentIds = new Set(presences?.map(p => p.student_id));
     const missingStudents = students.filter(s => !presentStudentIds.has(s.id));
 
+    const dailyTemplate = settings.attendance_msg_daily_late || "Oi {nome}! 📚 Sentimos sua falta hoje. A aula começou às {horario}. Está tudo bem?";
+
     for (const student of missingStudents) {
-        const message = `Oi ${student.name}! 📚 Sentimos sua falta hoje. A aula começou às ${settings.class_start_time || '19:30'}. Está tudo bem?`;
+        const message = formatMessage(dailyTemplate, {
+            nome: student.name,
+            horario: settings.class_start_time || '19:30'
+        });
         await notifyViaWhatsApp(supabase, student.phone, message);
     }
 
@@ -83,12 +96,10 @@ async function handleAccumulatedAbsenceAlerts(supabase, settings) {
     const { data: students } = await supabase.from("students").select("id, name, phone").eq("status", "ativo");
     if (!students) return new Response(JSON.stringify({ success: true, count: 0 }));
 
-    for (const student of students) {
-        // Determine the subject/module context. Usually, we'd check current enrollment.
-        // Simplifying: Check absences for all active lessons the student belongs to via subject.
-        // In a real scenario, we would group by subject_id.
+    const alertTemplate = settings.attendance_msg_alert || "Oi {nome}! Você tem {faltas} faltas em {disciplina}. Precisa de assiduidade para ser aprovado!";
+    const failTemplate = settings.attendance_msg_fail || "⚠️ ALERTA CRÍTICO: {nome} atingiu {faltas} faltas na disciplina {disciplina} e está REPROVADO.";
 
-        // Get all subjects the student has attendance records for
+    for (const student of students) {
         const { data: activeSubjects } = await supabase
             .from("attendance_records")
             .select(`
@@ -105,12 +116,9 @@ async function handleAccumulatedAbsenceAlerts(supabase, settings) {
                 .eq("student_id", student.id)
                 .eq("status", "present")
                 .filter("lesson_id", "in", (
-                    // This is a simplified subquery logic for Deno environment
-                    // Real implementation would join or use a rpc
                     supabase.from("lessons").select("id").eq("subject_id", subject_id)
                 ));
 
-            // Fetch workload or lesson count for the subject
             const { data: subject } = await supabase.from("subjects").select("workload, name").eq("id", subject_id).single();
             const totalLessons = subject?.workload || DEFAULT_LESSONS_PER_MODULE;
 
@@ -127,9 +135,12 @@ async function handleAccumulatedAbsenceAlerts(supabase, settings) {
                     .maybeSingle();
 
                 if (!existing) {
-                    const msg = severity === 'CRITICAL'
-                        ? `⚠️ ALERTA CRÍTICO: ${student.name} atingiu ${absencesCount} faltas na disciplina ${subject?.name} e está REPROVADO.`
-                        : `📚 ALERTA: ${student.name} atingiu ${absencesCount} faltas na disciplina ${subject?.name}.`;
+                    const template = severity === 'CRITICAL' ? failTemplate : alertTemplate;
+                    const finalMsg = formatMessage(template, {
+                        nome: student.name,
+                        faltas: absencesCount,
+                        disciplina: subject?.name || 'Módulo'
+                    });
 
                     await supabase.from("attendance_alerts").insert({
                         student_id: student.id,
@@ -139,8 +150,8 @@ async function handleAccumulatedAbsenceAlerts(supabase, settings) {
                         absences_count: absencesCount
                     });
 
-                    await notifyViaWhatsApp(supabase, student.phone, `Oi ${student.name}! Você tem ${absencesCount} faltas em ${subject?.name}. Precisa de assiduidade para ser aprovado!`);
-                    await notifyViaWhatsApp(supabase, settings.secretary_phone, msg);
+                    await notifyViaWhatsApp(supabase, student.phone, finalMsg);
+                    await notifyViaWhatsApp(supabase, settings.secretary_phone, `Relatório: ${finalMsg}`);
                 }
             }
         }

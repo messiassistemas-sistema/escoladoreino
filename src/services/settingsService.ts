@@ -34,6 +34,9 @@ export interface SystemSettings {
     class_start_time: string;
     check_in_deadline_time: string;
     secretary_phone: string | null;
+    attendance_msg_daily_late: string;
+    attendance_msg_alert: string;
+    attendance_msg_fail: string;
     updated_at: string;
 }
 
@@ -98,6 +101,9 @@ export const settingsService = {
                 class_start_time: "19:30",
                 check_in_deadline_time: "20:15",
                 secretary_phone: null,
+                attendance_msg_daily_late: "Oi {nome}! 📚 Sentimos sua falta hoje. A aula começou às {horario}. Está tudo bem?",
+                attendance_msg_alert: "Oi {nome}! Você tem {faltas} faltas em {disciplina}. Precisa de assiduidade para ser aprovado!",
+                attendance_msg_fail: "⚠️ ALERTA CRÍTICO: {nome} atingiu {faltas} faltas na disciplina {disciplina} e está REPROVADO.",
                 updated_at: new Date().toISOString()
             } as SystemSettings;
         }

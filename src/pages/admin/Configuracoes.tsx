@@ -388,6 +388,56 @@ export default function AdminConfiguracoes() {
                     </div>
                   </div>
 
+                  <div className="space-y-4 pt-6 border-t border-border">
+                    <h4 className="font-semibold text-sm flex items-center gap-2">
+                      <MessageCircle className="h-4 w-4" /> Personalização de Mensagens (WhatsApp)
+                    </h4>
+
+                    <div className="grid gap-4 md:grid-cols-1">
+                      <div className="space-y-2">
+                        <Label htmlFor="attendance_msg_daily_late">Mensagem de Ausência (Tempo Real)</Label>
+                        <Textarea
+                          id="attendance_msg_daily_late"
+                          value={formData.attendance_msg_daily_late || ""}
+                          onChange={(e) => handleChange("attendance_msg_daily_late", e.target.value)}
+                          placeholder="Oi {nome}! 📚 Sentimos sua falta hoje..."
+                          rows={2}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Variáveis: <strong>{'{nome}'}</strong>, <strong>{'{horario}'}</strong>
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="attendance_msg_alert">Mensagem de Alerta (Faltas Acumuladas)</Label>
+                        <Textarea
+                          id="attendance_msg_alert"
+                          value={formData.attendance_msg_alert || ""}
+                          onChange={(e) => handleChange("attendance_msg_alert", e.target.value)}
+                          placeholder="Oi {nome}! Você tem {faltas} faltas..."
+                          rows={2}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Variáveis: <strong>{'{nome}'}</strong>, <strong>{'{faltas}'}</strong>, <strong>{'{disciplina}'}</strong>
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="attendance_msg_fail">Mensagem de Reprovação</Label>
+                        <Textarea
+                          id="attendance_msg_fail"
+                          value={formData.attendance_msg_fail || ""}
+                          onChange={(e) => handleChange("attendance_msg_fail", e.target.value)}
+                          placeholder="⚠️ ALERTA CRÍTICO: {nome} atingiu {faltas} faltas..."
+                          rows={2}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Variáveis: <strong>{'{nome}'}</strong>, <strong>{'{faltas}'}</strong>, <strong>{'{disciplina}'}</strong>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 p-4 border border-blue-100 dark:border-blue-900/30">
                     <h5 className="text-sm font-bold text-blue-800 dark:text-blue-300 mb-1">Resumo da Regra Vigente</h5>
                     <p className="text-sm text-blue-700 dark:text-blue-400">

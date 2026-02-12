@@ -70,7 +70,7 @@ export default function PortalDashboard() {
 
   // Process Stats
   // 1. GPA
-  const uniqueSubjects = new Set(grades.map((g: any) => g.assessment?.subject_id));
+  const uniqueSubjects = new Set(grades.map((g: any) => g.assessment?.subject_id).filter(Boolean));
   const totalGrades = grades.reduce((acc: number, curr: any) => acc + Number(curr.grade), 0);
   const averageGrade = grades.length > 0 ? totalGrades / grades.length : 0;
 
@@ -78,6 +78,23 @@ export default function PortalDashboard() {
   const totalAttendance = attendance.length;
   const presentCount = attendance.filter((r: any) => r.status === 'present').length;
   const attendanceRate = totalAttendance > 0 ? (presentCount / totalAttendance) * 100 : 0;
+
+  // 2.1 Enrolled disciplines (More robust count)
+  const subjectsFromLessons = new Set(
+    lessons
+      .filter((l: any) => l.class_name === student?.class_name)
+      .map((l: any) => l.subject_id)
+      .filter(Boolean)
+  );
+  const subjectsFromAttendance = new Set(attendance.map((a: any) => a.lesson?.subject_id).filter(Boolean));
+
+  const allStudentSubjects = new Set([
+    ...Array.from(subjectsFromLessons),
+    ...Array.from(uniqueSubjects),
+    ...Array.from(subjectsFromAttendance)
+  ]);
+
+  const discplinesCount = allStudentSubjects.size;
 
   // 3. Upcoming Lessons
   const now = new Date();
@@ -195,6 +212,14 @@ export default function PortalDashboard() {
               <p className="max-w-md text-primary-foreground/80 font-medium">
                 Mantenha o foco e alcance seus objetivos teológicos!
               </p>
+              {upcomingLessons.length > 0 && (
+                <div className="pt-2 animate-in fade-in slide-in-from-left-4 duration-700">
+                  <Badge variant="outline" className="bg-white/10 border-white/20 text-white font-bold px-3 py-1.5 backdrop-blur-md">
+                    <BookOpen className="h-3.5 w-3.5 mr-2" />
+                    Módulo Atual: <span className="ml-1.5 text-white underline decoration-white/30 underline-offset-4 decoration-2">{upcomingLessons[0]?.subject?.name || upcomingLessons[0]?.topic || "Disciplina"}</span>
+                  </Badge>
+                </div>
+              )}
             </div>
             <div className="flex gap-4">
               <Button size="lg" className="bg-white text-primary hover:bg-white/90 font-bold rounded-xl shadow-xl shadow-black/10">
@@ -210,7 +235,7 @@ export default function PortalDashboard() {
           {[
             { label: "Média Geral", value: averageGrade.toFixed(1), icon: StarIcon, color: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/20" },
             { label: "Frequência", value: `${attendanceRate.toFixed(1)}%`, icon: Calendar, color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
-            { label: "Disciplinas", value: uniqueSubjects.size.toString(), icon: BookOpen, color: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/20" },
+            { label: "Disciplinas", value: discplinesCount.toString(), icon: BookOpen, color: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/20" },
             { label: "Avisos", value: announcements.length.toString(), icon: Bell, color: "text-purple-500", bg: "bg-purple-500/10", border: "border-purple-500/20" },
           ].map((stat, i) => (
             <motion.div key={i} variants={itemVariants}>
