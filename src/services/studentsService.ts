@@ -126,14 +126,19 @@ export const studentsService = {
     },
 
     async deleteStudent(id: string): Promise<void> {
-        const { error } = await supabase
-            .from("students")
-            .delete()
-            .eq("id", id);
+        console.log("Deleting student via Edge Function:", id);
+        const { data, error } = await supabase.functions.invoke("delete-student", {
+            body: { student_id: id }
+        });
 
         if (error) {
-            console.error("Erro ao excluir aluno:", error);
+            console.error("Erro na função delete-student:", error);
             throw error;
+        }
+
+        if (data && !data.success) {
+            console.error("Erro retornado pela função:", data.error);
+            throw new Error(data.error || "Erro ao excluir aluno");
         }
     },
 
