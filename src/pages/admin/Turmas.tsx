@@ -41,6 +41,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { classesService, Class } from "@/services/classesService";
+import { studentsService } from "@/services/studentsService";
 import { useEffect } from "react";
 import { Label } from "@/components/ui/label";
 
@@ -64,6 +65,15 @@ export default function AdminTurmas() {
     queryKey: ["classes"],
     queryFn: classesService.getClasses,
   });
+
+  const { data: students = [] } = useQuery({
+    queryKey: ["students"],
+    queryFn: studentsService.getStudents,
+  });
+
+  const getStudentCount = (className: string) => {
+    return students.filter(s => s.class_name === className).length;
+  };
 
   useEffect(() => {
     if (editingClass) {
@@ -252,7 +262,7 @@ export default function AdminTurmas() {
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center gap-1">
                           <Users className="h-4 w-4 text-muted-foreground" />
-                          {turma.student_count}
+                          {getStudentCount(turma.name)}
                         </div>
 
                       </TableCell>

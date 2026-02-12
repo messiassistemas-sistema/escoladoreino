@@ -6,8 +6,8 @@ export interface Class {
     start_date: string | null;
     end_date: string | null;
     is_active: boolean;
-    status: 'ativa' | 'concluida' | 'cancelada';
-    student_count: number;
+    status?: 'ativa' | 'concluida' | 'cancelada';
+    student_count?: number;
     created_at?: string;
     updated_at?: string;
 }
