@@ -248,7 +248,7 @@ export default function PortalCalendario() {
 
           {/* Next Classes List */}
           <motion.div variants={itemVariants} className="space-y-4 pt-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between px-1 gap-2">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between px-1 gap-2">
               <h3 className="font-display text-xl md:text-2xl font-bold">Resumo das Próximas Aulas</h3>
               <Button variant="ghost" size="sm" className="text-xs font-bold text-primary gap-1 w-full md:w-auto justify-start md:justify-center">Ver todas <ChevronRight className="h-3 w-3" /></Button>
             </div>

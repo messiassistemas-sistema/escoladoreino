@@ -301,8 +301,8 @@ export function PortalLayout({ children, title, description }: PortalLayoutProps
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto bg-muted/30 custom-scrollbar">
-          <div className="container mx-auto p-4 md:p-6 lg:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden bg-muted/30 custom-scrollbar">
+          <div className="container mx-auto p-3 md:p-6 lg:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {children}
           </div>
         </main>
