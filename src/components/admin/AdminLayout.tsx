@@ -93,6 +93,7 @@ import { useQuery } from "@tanstack/react-query";
 import { settingsService } from "@/services/settingsService";
 
 import { ProfileDialog } from "@/components/profile/ProfileDialog";
+import { NotificationBell } from "@/components/common/NotificationBell";
 
 export function AdminLayout({ children, title, description }: AdminLayoutProps) {
   const location = useLocation();
@@ -301,11 +302,8 @@ export function AdminLayout({ children, title, description }: AdminLayoutProps) 
 
             <div className="flex items-center gap-2 border-l border-border/50 pl-4 ml-2">
               <ThemeToggle />
-
-              <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-xl hover:bg-muted/50 border border-transparent hover:border-border/50 transition-all">
-                <Bell className="h-5 w-5 text-muted-foreground" />
-                <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-destructive border-2 border-background" />
-              </Button>
+              <div className="mx-1" />
+              <NotificationBell />
             </div>
           </div>
         </header>
