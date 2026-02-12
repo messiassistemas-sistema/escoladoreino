@@ -48,9 +48,11 @@ export default function AdminDashboard() {
       const now = new Date();
       const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-      // Get last 7 days for attendance trend
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
       const [
         studentsResp,
@@ -63,7 +65,8 @@ export default function AdminDashboard() {
         attendanceTrendgResp, // Records for the 7-day trend
         settingsResp,
         lessonsResp,
-        attendanceCountResp
+        attendanceCountResp,
+        currentMonthNewStudentsResp
       ] = await Promise.all([
         supabase.from("students").select("*", { count: "exact", head: true }),
         supabase.from("teachers").select("*", { count: "exact", head: true }),
@@ -76,8 +79,9 @@ export default function AdminDashboard() {
           .select("created_at, status")
           .gte("created_at", sevenDaysAgo.toISOString()),
         supabase.from("system_settings").select("enrollment_value").single(),
-        supabase.from("lessons").select("*", { count: "exact", head: true }),
-        supabase.from("attendance_records").select("*", { count: "exact", head: true }).eq("status", "present")
+        supabase.from("lessons").select("*", { count: "exact", head: true }).gte("date", thirtyDaysAgo.toISOString().split('T')[0]),
+        supabase.from("attendance_records").select("*", { count: "exact", head: true }).eq("status", "present").gte("created_at", thirtyDaysAgo.toISOString()),
+        supabase.from("students").select("*", { count: "exact", head: true }).gte("created_at", firstDayOfMonth)
       ]);
 
       const totalLessonsCount = lessonsResp.count || 0;
@@ -85,13 +89,14 @@ export default function AdminDashboard() {
 
       // --- Financials ---
       const monthlyRevenue = (paymentsResp.data || [])
-        .filter(p => p.status === "pago" || p.status === "approved" || p.status === "paid")
+        .filter(p => p.status === "pago" || p.status === "approved" || p.status === "paid" || p.status === "completed")
+        .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+
+      const pendingRevenue = (paymentsResp.data || [])
+        .filter(p => p.status === "pendente" || p.status === "pending" || p.status === "waiting")
         .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
 
       const allStudents = studentsResp.count || 0;
-      // Fetch actual active/inactive counts if possible, but we only have head response for all.
-      // We need to fetch basic data to categorize. 
-      // Optimization: Fetch just status column for all students
       const { data: allStudentStatuses } = await supabase.from("students").select("status");
 
       const activeStudentsCount = (allStudentStatuses || []).filter(s => s.status === 'ativo').length;
@@ -105,12 +110,11 @@ export default function AdminDashboard() {
         ? Math.max(0, ((expectedRevenue - monthlyRevenue) / expectedRevenue) * 100).toFixed(1)
         : "0";
 
-      // --- Attendance ---
-      // We calculate global attendance as: (Total Present Records) / (Total Active Students * Total Lessons Created)
-      // This is a more accurate global health metric than averaging per-student rates which might be stale.
+      // --- Attendance (Last 30 Days) ---
+      // We calculate global attendance as: (Present Records) / (Active Students * Lessons Created) in the last 30 days
       const academicPotential = activeStudentsCount * totalLessonsCount;
       const avgAttendance = academicPotential > 0
-        ? ((totalPresenceCount / academicPotential) * 100).toFixed(1)
+        ? Math.min(100, (totalPresenceCount / academicPotential) * 100).toFixed(1)
         : "0";
 
       // Attendance Trend (Daily Present Count)
@@ -149,30 +153,35 @@ export default function AdminDashboard() {
       });
       const paymentDistribution = Object.entries(paymentStatusMap).map(([name, value]) => ({ name, value }));
 
-      // --- Growth ---
-      const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-      const growthMap: Record<string, number> = {};
-      (monthlyGrowthResp.data || []).forEach(s => {
-        const date = new Date(s.created_at!);
-        const monthHeader = months[date.getMonth()];
-        growthMap[monthHeader] = (growthMap[monthHeader] || 0) + 1;
-      });
-      const growthData = months
-        .map(m => ({ name: m, total: growthMap[m] || 0 }))
-        .filter((_, i) => i <= now.getMonth() && i > now.getMonth() - 6);
+      // --- Growth Fix: Rolling 6 months ---
+      const monthsLong = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+      const growthData = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const label = `${monthsLong[d.getMonth()]}/${d.getFullYear().toString().slice(-2)}`;
+
+        const count = (monthlyGrowthResp.data || []).filter(s => {
+          const sDate = new Date(s.created_at!);
+          return sDate.getMonth() === d.getMonth() && sDate.getFullYear() === d.getFullYear();
+        }).length;
+
+        growthData.push({ name: label, total: count });
+      }
 
       return {
         stats: [
           { label: "Total de Alunos", value: studentsResp.count?.toString() || "0", icon: Users, trend: "Cadastrados", color: "text-blue-600", bg: "bg-blue-100 dark:bg-blue-900/20" },
           { label: "Receita (Mês)", value: `R$ ${monthlyRevenue.toLocaleString('pt-BR')}`, icon: DollarSign, trend: "Realizado", color: "text-green-600", bg: "bg-green-100 dark:bg-green-900/20" },
-          { label: "Inadimplência Est.", value: `${defaultRate}%`, icon: AlertCircle, trend: "Estimado", color: "text-red-500", bg: "bg-red-100 dark:bg-red-900/20" },
-          { label: "Presença Média", value: `${avgAttendance}%`, icon: CheckCircle2, trend: "Global", color: "text-purple-600", bg: "bg-purple-100 dark:bg-purple-900/20" },
+          { label: "Novas Matrículas", value: currentMonthNewStudentsResp.count?.toString() || "0", icon: TrendingUp, trend: "Este mês", color: "text-orange-500", bg: "bg-orange-100 dark:bg-orange-900/20" },
+          { label: "Frequência Real", value: `${avgAttendance}%`, icon: Activity, trend: "Últimos 30 dias", color: "text-purple-600", bg: "bg-purple-100 dark:bg-purple-900/20" },
         ],
         growthData,
         paymentDistribution,
         financials: {
           expected: expectedRevenue,
           realized: monthlyRevenue,
+          pending: pendingRevenue,
+          activeCount: activeStudentsCount,
           gap: Math.max(0, expectedRevenue - monthlyRevenue)
         },
         academic: {
@@ -259,35 +268,48 @@ export default function AdminDashboard() {
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full items-center">
                       {/* Visual Bar */}
-                      <div className="col-span-2 space-y-6">
+                      <div className="col-span-2 space-y-4">
                         <div className="space-y-2">
-                          <div className="flex justify-between text-sm font-medium">
-                            <span className="text-muted-foreground">Realizado</span>
+                          <div className="flex justify-between text-xs font-medium">
+                            <span className="text-muted-foreground">Progresso de Recebimento</span>
                             <span className="text-emerald-600 dark:text-emerald-400">
-                              {((dashboardData?.financials?.realized / dashboardData?.financials?.expected) * 100 || 0).toFixed(1)}%
+                              {((dashboardData?.financials?.realized / dashboardData?.financials?.expected) * 100 || 0).toFixed(1)}% Realizado
                             </span>
                           </div>
-                          <div className="h-4 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                          <div className="h-3 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex">
                             <div
-                              className="h-full bg-emerald-500 rounded-full transition-all duration-1000 ease-out"
+                              className="h-full bg-emerald-500 transition-all duration-1000 ease-out"
                               style={{ width: `${Math.min(100, (dashboardData?.financials?.realized / dashboardData?.financials?.expected) * 100 || 0)}%` }}
+                              title="Realizado"
+                            />
+                            <div
+                              className="h-full bg-blue-400 transition-all duration-1000 ease-out"
+                              style={{ width: `${Math.min(100, (dashboardData?.financials?.pending / dashboardData?.financials?.expected) * 100 || 0)}%` }}
+                              title="Pendente"
                             />
                           </div>
-                          <p className="text-xs text-muted-foreground text-right">
-                            Meta: R$ {dashboardData?.financials?.expected?.toLocaleString('pt-BR') || '0,00'}
-                          </p>
+                          <div className="flex justify-between text-[10px] text-muted-foreground px-1">
+                            <span>0</span>
+                            <span>Meta: R$ {dashboardData?.financials?.expected?.toLocaleString('pt-BR') || '0,00'}</span>
+                          </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4 pt-2">
-                          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-100 dark:border-emerald-900/50">
-                            <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80 font-bold uppercase">Entrada Real</p>
-                            <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
+                        <div className="grid grid-cols-3 gap-3 pt-2">
+                          <div className="p-2 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-100 dark:border-emerald-900/50">
+                            <p className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 font-bold uppercase">Pago</p>
+                            <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">
                               R$ {dashboardData?.financials?.realized.toLocaleString('pt-BR')}
                             </p>
                           </div>
-                          <div className="p-3 bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-100 dark:border-red-900/50">
-                            <p className="text-xs text-red-600/80 dark:text-red-400/80 font-bold uppercase">Gap (Inadimplência)</p>
-                            <p className="text-lg font-bold text-red-600 dark:text-red-400">
+                          <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-100 dark:border-blue-900/50">
+                            <p className="text-[10px] text-blue-600/80 dark:text-blue-400/80 font-bold uppercase">Pendente</p>
+                            <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                              R$ {dashboardData?.financials?.pending.toLocaleString('pt-BR')}
+                            </p>
+                          </div>
+                          <div className="p-2 bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-100 dark:border-red-900/50">
+                            <p className="text-[10px] text-red-600/80 dark:text-red-400/80 font-bold uppercase">Gap</p>
+                            <p className="text-sm font-bold text-red-600 dark:text-red-400">
                               R$ {dashboardData?.financials?.gap.toLocaleString('pt-BR')}
                             </p>
                           </div>
@@ -296,11 +318,11 @@ export default function AdminDashboard() {
 
                       {/* Insight Card */}
                       <div className="hidden md:flex flex-col justify-center items-center text-center p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                        <AlertCircle className="h-8 w-8 text-slate-400 mb-2" />
-                        <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">
-                          Seu gap de receita está em <span className="text-red-500 dark:text-red-400 font-bold">R$ {dashboardData?.financials?.gap.toLocaleString('pt-BR')}</span>.
+                        <DollarSign className="h-8 w-8 text-slate-400 mb-2" />
+                        <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+                          Receita potencial de <span className="text-primary font-bold">R$ {dashboardData?.financials?.expected.toLocaleString('pt-BR')}</span> baseada em {dashboardData?.financials?.activeCount} alunos ativos.
                         </p>
-                        <Button variant="link" size="sm" className="mt-2 text-primary h-auto p-0">Ver Inadimplentes</Button>
+                        <Button variant="link" size="sm" className="mt-2 text-primary h-auto p-0 text-xs">Acessar Financeiro</Button>
                       </div>
                     </div>
                   )}
