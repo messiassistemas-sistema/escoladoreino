@@ -206,7 +206,7 @@ export default function PortalDashboard() {
         </motion.div>
 
         {/* Stats Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4" id="tour-stats">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4" id="tour-stats">
           {[
             { label: "Média Geral", value: averageGrade.toFixed(1), icon: StarIcon, color: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/20" },
             { label: "Frequência", value: `${attendanceRate.toFixed(1)}%`, icon: Calendar, color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
@@ -232,7 +232,7 @@ export default function PortalDashboard() {
         </div>
 
         {/* Main content grid */}
-        <div className="grid gap-8 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           {/* Próximas Aulas - Left Column (2/3 width) */}
           <motion.div variants={itemVariants} className="lg:col-span-2 space-y-6" id="tour-agenda">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">

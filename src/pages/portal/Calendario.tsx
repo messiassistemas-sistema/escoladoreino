@@ -82,7 +82,7 @@ export default function PortalCalendario() {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="grid gap-8 lg:grid-cols-12"
+        className="grid grid-cols-1 gap-8 lg:grid-cols-12"
       >
         {/* Left Column - Calendar & Filter */}
         <div className="lg:col-span-4 space-y-6">
@@ -153,7 +153,7 @@ export default function PortalCalendario() {
                 {aulasNoDia.length > 0 && <Badge className="bg-emerald-500/10 text-emerald-600 border-none font-black text-xs h-6 self-start md:self-center">{aulasNoDia.length} Aulas</Badge>}
               </div>
 
-              <div className="grid gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 {aulasNoDia.length > 0 ? (
                   aulasNoDia.map((aula: any) => (
                     <Card key={aula.id} className="group border-none shadow-soft overflow-hidden transition-all duration-300 hover:shadow-elevated">
@@ -253,7 +253,7 @@ export default function PortalCalendario() {
               <Button variant="ghost" size="sm" className="text-xs font-bold text-primary gap-1 w-full md:w-auto justify-start md:justify-center">Ver todas <ChevronRight className="h-3 w-3" /></Button>
             </div>
 
-            <div className="grid gap-3">
+            <div className="grid grid-cols-1 gap-3">
               {proximasAulas.map((aula: any, index: number) => {
                 const aulaDate = parseLocalDate(aula.date);
                 const isToday = aulaDate.toDateString() === new Date().toDateString();
