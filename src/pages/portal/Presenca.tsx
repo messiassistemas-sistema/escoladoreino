@@ -48,10 +48,18 @@ export default function PortalPresenca() {
         setIsScannerOpen(false); // Close immediately to prevent double scan
 
         try {
+          // Parse potential JSON QR code
+          let lessonId = rawValue;
+          try {
+            const data = JSON.parse(rawValue);
+            if (data && data.lessonId) lessonId = data.lessonId;
+          } catch (e) { /* Not JSON */ }
+
           // Validate UUID simply
           const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-          if (!uuidRegex.test(rawValue)) {
+          if (!uuidRegex.test(lessonId)) {
             toast.error("Código inválido. Certifique-se de escanear o QR Code da aula.");
+            console.error("Scanned value:", rawValue);
             return;
           }
 
@@ -64,7 +72,7 @@ export default function PortalPresenca() {
 
           await lessonsService.markAttendance([{
             student_id: student.id,
-            lesson_id: rawValue,
+            lesson_id: lessonId,
             status: 'present',
             date: new Date().toISOString()
           }]);
@@ -182,7 +190,7 @@ export default function PortalPresenca() {
                           <Scanner
                             onScan={handleScan}
                             styles={{ container: { width: '100%', height: '100%' } }}
-                            components={{ audio: false, torch: true }}
+                            components={{ torch: true }}
                           />
                           {/* Overlay Scan Line Animation */}
                           <div className="absolute inset-0 pointer-events-none">
