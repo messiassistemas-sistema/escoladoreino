@@ -74,7 +74,7 @@ export function PortalLayout({ children, title, description }: PortalLayoutProps
   }, [title, settings]);
 
   // Mock user data
-  const { user } = useAuth();
+  const { user, role } = useAuth();
 
   // Fetch student profile for accurate data (like name and registration)
   const { data: student } = useQuery({
@@ -315,7 +315,8 @@ export function PortalLayout({ children, title, description }: PortalLayoutProps
         userEmail={userData.email}
       />
       <DailyQuoteModal />
-      <PortalTour runOnMount={true} />
+      {/* Tour apenas para admins */}
+      {role === 'admin' && <PortalTour runOnMount={true} />}
     </div>
   );
 }
