@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   CheckCircle2,
@@ -31,9 +32,54 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { studentsService } from "@/services/studentsService";
 import { lessonsService } from "@/services/lessonsService";
+import { Scanner } from '@yudiel/react-qr-scanner';
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function PortalPresenca() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+
+  const handleScan = async (detectedCodes: any[]) => {
+    if (detectedCodes && detectedCodes.length > 0) {
+      const rawValue = detectedCodes[0].rawValue;
+      if (rawValue) {
+        setIsScannerOpen(false); // Close immediately to prevent double scan
+
+        try {
+          // Validate UUID simply
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          if (!uuidRegex.test(rawValue)) {
+            toast.error("Código inválido. Certifique-se de escanear o QR Code da aula.");
+            return;
+          }
+
+          if (!student?.id) {
+            toast.error("Erro ao identificar aluno.");
+            return;
+          }
+
+          toast.loading("Registrando presença...");
+
+          await lessonsService.markAttendance([{
+            student_id: student.id,
+            lesson_id: rawValue,
+            status: 'present',
+            date: new Date().toISOString()
+          }]);
+
+          await queryClient.invalidateQueries({ queryKey: ['student-attendance'] });
+          toast.dismiss();
+          toast.success("Presença registrada com sucesso! 🎉");
+        } catch (error) {
+          console.error(error);
+          toast.dismiss();
+          toast.error("Erro ao registrar presença. Tente novamente.");
+        }
+      }
+    }
+  };
 
   // Fetch Student
   const { data: student } = useQuery({
@@ -117,7 +163,7 @@ export default function PortalPresenca() {
                 </div>
 
                 <div className="flex flex-wrap gap-4">
-                  <Dialog>
+                  <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
                     <DialogTrigger asChild>
                       <Button className="h-12 px-6 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold gap-2 shadow-lg shadow-primary/20 transition-all hover:scale-[1.02]">
                         <Smartphone className="h-5 w-5" />
@@ -131,26 +177,25 @@ export default function PortalPresenca() {
                           Aponte a câmera para o código projetado pelo professor.
                         </DialogDescription>
                       </DialogHeader>
-                      <div className="flex flex-col items-center gap-6 py-8">
-                        <div className="group relative">
-                          <div className="absolute -inset-1 bg-gradient-to-r from-primary to-secondary rounded-3xl blur opacity-25 group-hover:opacity-40 transition duration-1000 group-hover:duration-200" />
-                          <div className="relative flex h-56 w-56 items-center justify-center rounded-[2rem] border border-border/50 bg-background shadow-inner">
-                            <div className="text-center space-y-4">
-                              <div className="relative">
-                                <QrCode className="mx-auto h-16 w-16 text-muted-foreground/30" />
-                                <div className="absolute top-0 left-0 w-full h-0.5 bg-primary/40 animate-scan mt-8" />
-                              </div>
-                              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
-                                Aguardando Câmera
-                              </p>
-                            </div>
+                      <div className="flex flex-col items-center gap-6 py-4">
+                        <div className="relative w-full aspect-square max-w-[300px] overflow-hidden rounded-[2rem] border-4 border-primary/20 bg-black">
+                          <Scanner
+                            onScan={handleScan}
+                            styles={{ container: { width: '100%', height: '100%' } }}
+                            components={{ audio: false, torch: true }}
+                          />
+                          {/* Overlay Scan Line Animation */}
+                          <div className="absolute inset-0 pointer-events-none">
+                            <div className="absolute top-0 left-0 w-full h-0.5 bg-primary/60 animate-scan shadow-[0_0_15px_rgba(var(--primary),0.8)]" />
+                            <div className="absolute inset-8 border-2 border-white/30 rounded-xl" />
                           </div>
                         </div>
+
                         <div className="w-full space-y-3 px-4">
                           <div className="flex items-center gap-3 p-3 rounded-2xl bg-muted/50 border border-border/50">
                             <Info className="h-4 w-4 text-primary" />
                             <p className="text-[11px] font-medium leading-tight text-muted-foreground">
-                              A frequência é registrada instantaneamente após a leitura bem-sucedida.
+                              Aponte para o QR Code da aula. A presença será confirmada automaticamente.
                             </p>
                           </div>
                         </div>
