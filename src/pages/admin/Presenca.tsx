@@ -7,6 +7,9 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  ChevronDown,
+  ChevronUp,
+  CalendarDays,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,6 +44,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function AdminPresenca() {
   const [searchTerm, setSearchTerm] = useState("");
   const [disciplinaFilter, setDisciplinaFilter] = useState("todas");
+  const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
 
   const { data: students = [], isLoading: isLoadingStudents } = useQuery({
     queryKey: ["students"],
@@ -62,7 +66,7 @@ export default function AdminPresenca() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("attendance_records")
-        .select("*, lesson:lessons(subject_id)");
+        .select("*, lesson:lessons(subject_id, date, time, topic, subject:subjects(name))");
       if (error) throw error;
       return data || [];
     },
@@ -81,6 +85,37 @@ export default function AdminPresenca() {
         && a.status === 'present'
         && filteredLessonIds.has(a.lesson_id)
     ).length;
+  };
+
+  const getStudentLessonDetails = (studentId: string) => {
+    return filteredLessons.map(lesson => {
+      const record = allAttendance.find(
+        (a: any) => a.student_id === studentId && a.lesson_id === lesson.id
+      );
+      return {
+        lessonId: lesson.id,
+        topic: lesson.topic || lesson.subject?.name || 'Sem título',
+        scheduledDate: lesson.date,
+        scheduledTime: lesson.time,
+        subjectName: lesson.subject?.name,
+        status: record?.status === 'present' ? 'present' as const : 'absent' as const,
+        checkInTime: record?.date || record?.created_at || null,
+      };
+    });
+  };
+
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return '—';
+    try {
+      return new Date(dateStr).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    } catch { return dateStr; }
+  };
+
+  const formatTime = (dateStr: string | null) => {
+    if (!dateStr) return '—';
+    try {
+      return new Date(dateStr).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    } catch { return dateStr; }
   };
 
   const activeStudents = students.filter(s => s.status !== 'pendente');
@@ -192,60 +227,149 @@ export default function AdminPresenca() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredData.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 font-display font-semibold text-primary">
-                            {item.name?.charAt(0) || "A"}
-                          </div>
-                          <div>
-                            <p className="font-medium">{item.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              #{item.registration_number}
-                            </p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {totalAulas}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className="text-success">
-                          {getStudentAttendanceCount(item.id)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className="text-destructive">
-                          {totalAulas - getStudentAttendanceCount(item.id)}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Progress
-                            value={getStudentRate(item.id)}
-                            className="h-2 w-24"
-                          />
-                          <span className="text-sm font-medium">
-                            {getStudentRate(item.id).toFixed(1)}%
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {getStudentRate(item.id) >= 75 ? (
-                          <Badge className="bg-success text-success-foreground">
-                            <CheckCircle2 className="mr-1 h-3 w-3" />
-                            Regular
-                          </Badge>
-                        ) : (
-                          <Badge variant="destructive">
-                            <XCircle className="mr-1 h-3 w-3" />
-                            Irregular
-                          </Badge>
+                  {filteredData.map((item) => {
+                    const isExpanded = expandedStudent === item.id;
+                    const details = isExpanded ? getStudentLessonDetails(item.id) : [];
+                    return (
+                      <>
+                        <TableRow
+                          key={item.id}
+                          className="cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => setExpandedStudent(isExpanded ? null : item.id)}
+                        >
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 font-display font-semibold text-primary">
+                                {item.name?.charAt(0) || "A"}
+                              </div>
+                              <div>
+                                <p className="font-medium">{item.name}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  #{item.registration_number}
+                                </p>
+                              </div>
+                              {isExpanded ? (
+                                <ChevronUp className="h-4 w-4 text-muted-foreground ml-auto" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4 text-muted-foreground ml-auto" />
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {totalAulas}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <span className="text-success">
+                              {getStudentAttendanceCount(item.id)}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <span className="text-destructive">
+                              {totalAulas - getStudentAttendanceCount(item.id)}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Progress
+                                value={getStudentRate(item.id)}
+                                className="h-2 w-24"
+                              />
+                              <span className="text-sm font-medium">
+                                {getStudentRate(item.id).toFixed(1)}%
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {getStudentRate(item.id) >= 75 ? (
+                              <Badge className="bg-success text-success-foreground">
+                                <CheckCircle2 className="mr-1 h-3 w-3" />
+                                Regular
+                              </Badge>
+                            ) : (
+                              <Badge variant="destructive">
+                                <XCircle className="mr-1 h-3 w-3" />
+                                Irregular
+                              </Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                        {isExpanded && (
+                          <TableRow key={`${item.id}-details`}>
+                            <TableCell colSpan={6} className="p-0">
+                              <div className="bg-muted/30 border-t border-b px-6 py-4">
+                                <p className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                                  <CalendarDays className="h-4 w-4" />
+                                  Detalhes de Presença — {item.name}
+                                </p>
+                                <div className="rounded-lg border bg-background overflow-hidden">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow className="text-xs">
+                                        <TableHead>Aula</TableHead>
+                                        <TableHead className="text-center">Data Agendada</TableHead>
+                                        <TableHead className="text-center">Horário Agendado</TableHead>
+                                        <TableHead className="text-center">Status</TableHead>
+                                        <TableHead className="text-center">Check-in</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {details.map((d) => (
+                                        <TableRow key={d.lessonId} className="text-sm">
+                                          <TableCell className="font-medium">
+                                            {d.topic}
+                                            {d.subjectName && (
+                                              <span className="block text-xs text-muted-foreground">{d.subjectName}</span>
+                                            )}
+                                          </TableCell>
+                                          <TableCell className="text-center">
+                                            {formatDate(d.scheduledDate)}
+                                          </TableCell>
+                                          <TableCell className="text-center">
+                                            {d.scheduledTime || '—'}
+                                          </TableCell>
+                                          <TableCell className="text-center">
+                                            {d.status === 'present' ? (
+                                              <Badge className="bg-success/10 text-success border-success/20 text-xs">
+                                                <CheckCircle2 className="mr-1 h-3 w-3" />
+                                                Presente
+                                              </Badge>
+                                            ) : (
+                                              <Badge variant="outline" className="text-destructive border-destructive/30 text-xs">
+                                                <XCircle className="mr-1 h-3 w-3" />
+                                                Falta
+                                              </Badge>
+                                            )}
+                                          </TableCell>
+                                          <TableCell className="text-center">
+                                            {d.status === 'present' && d.checkInTime ? (
+                                              <span className="text-xs">
+                                                <span className="font-medium">{formatDate(d.checkInTime)}</span>
+                                                {' '}
+                                                <span className="text-muted-foreground">às {formatTime(d.checkInTime)}</span>
+                                              </span>
+                                            ) : (
+                                              <span className="text-muted-foreground">—</span>
+                                            )}
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                      {details.length === 0 && (
+                                        <TableRow>
+                                          <TableCell colSpan={5} className="text-center text-muted-foreground py-4">
+                                            Nenhuma aula encontrada para esta disciplina.
+                                          </TableCell>
+                                        </TableRow>
+                                      )}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
                         )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                      </>
+                    );
+                  })}
 
                 </TableBody>
               </Table>
