@@ -45,6 +45,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { studentsService, Student } from "@/services/studentsService";
+import { lessonsService } from "@/services/lessonsService";
+import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useEffect } from "react";
@@ -79,6 +81,30 @@ export default function AdminAlunos() {
     queryKey: ["students"],
     queryFn: studentsService.getStudents,
   });
+
+  const { data: lessons = [] } = useQuery({
+    queryKey: ["lessons"],
+    queryFn: lessonsService.getLessons,
+  });
+
+  const { data: allAttendance = [] } = useQuery({
+    queryKey: ["all-attendance-records"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("attendance_records")
+        .select("student_id, lesson_id, status");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const getDynamicRate = (studentId: string) => {
+    if (lessons.length === 0) return 0;
+    const presentCount = allAttendance.filter(
+      (a: any) => a.student_id === studentId && a.status === 'present'
+    ).length;
+    return (presentCount / lessons.length) * 100;
+  };
 
   useEffect(() => {
     if (editingStudent) {
@@ -405,8 +431,8 @@ export default function AdminAlunos() {
                     <div className="flex gap-4">
                       <div className="flex flex-col">
                         <span className="text-[10px] text-muted-foreground">Frequência</span>
-                        <span className={detailsStudent.attendance_rate >= 75 ? "text-success font-bold" : "text-destructive font-bold"}>
-                          {detailsStudent.attendance_rate}%
+                        <span className={getDynamicRate(detailsStudent.id) >= 75 ? "text-success font-bold" : "text-destructive font-bold"}>
+                          {getDynamicRate(detailsStudent.id).toFixed(1)}%
                         </span>
                       </div>
                       <div className="flex flex-col">
@@ -566,10 +592,10 @@ export default function AdminAlunos() {
                       <TableCell className="text-center">
                         <span
                           className={
-                            aluno.attendance_rate >= 75 ? "text-success" : "text-destructive"
+                            getDynamicRate(aluno.id) >= 75 ? "text-success" : "text-destructive"
                           }
                         >
-                          {aluno.attendance_rate}%
+                          {getDynamicRate(aluno.id).toFixed(1)}%
                         </span>
                       </TableCell>
                       <TableCell className="text-center font-medium">
