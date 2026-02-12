@@ -32,12 +32,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { studentsService } from "@/services/studentsService";
 import { subjectsService } from "@/services/subjectsService";
 import { lessonsService } from "@/services/lessonsService";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 
 
 
@@ -45,6 +46,31 @@ export default function AdminPresenca() {
   const [searchTerm, setSearchTerm] = useState("");
   const [disciplinaFilter, setDisciplinaFilter] = useState("todas");
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const attendanceMutation = useMutation({
+    mutationFn: async ({ studentId, lessonId, status }: { studentId: string, lessonId: string, status: 'present' | 'absent' }) => {
+      return lessonsService.markAttendance([{
+        student_id: studentId,
+        lesson_id: lessonId,
+        status: status,
+        date: new Date().toISOString()
+      }]);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["all-attendance-records"] });
+      toast.success("Presença atualizada com sucesso!");
+    },
+    onError: (error) => {
+      console.error("Erro ao atualizar presença:", error);
+      toast.error("Erro ao atualizar presença.");
+    }
+  });
+
+  const handleStatusChange = (studentId: string, lessonId: string, currentStatus: 'present' | 'absent') => {
+    const newStatus = currentStatus === 'present' ? 'absent' : 'present';
+    attendanceMutation.mutate({ studentId, lessonId, status: newStatus });
+  };
 
   const { data: students = [], isLoading: isLoadingStudents } = useQuery({
     queryKey: ["students"],
@@ -328,17 +354,23 @@ export default function AdminPresenca() {
                                             {d.scheduledTime || '—'}
                                           </TableCell>
                                           <TableCell className="text-center">
-                                            {d.status === 'present' ? (
-                                              <Badge className="bg-success/10 text-success border-success/20 text-xs">
-                                                <CheckCircle2 className="mr-1 h-3 w-3" />
-                                                Presente
-                                              </Badge>
-                                            ) : (
-                                              <Badge variant="outline" className="text-destructive border-destructive/30 text-xs">
-                                                <XCircle className="mr-1 h-3 w-3" />
-                                                Falta
-                                              </Badge>
-                                            )}
+                                            <button
+                                              onClick={() => handleStatusChange(item.id, d.lessonId, d.status)}
+                                              disabled={attendanceMutation.isPending}
+                                              className="hover:scale-105 transition-transform"
+                                            >
+                                              {d.status === 'present' ? (
+                                                <Badge className="bg-success/10 text-success border-success/20 text-xs cursor-pointer">
+                                                  <CheckCircle2 className="mr-1 h-3 w-3" />
+                                                  Presente
+                                                </Badge>
+                                              ) : (
+                                                <Badge variant="outline" className="text-destructive border-destructive/30 text-xs cursor-pointer">
+                                                  <XCircle className="mr-1 h-3 w-3" />
+                                                  Falta
+                                                </Badge>
+                                              )}
+                                            </button>
                                           </TableCell>
                                           <TableCell className="text-center">
                                             {d.status === 'present' && d.checkInTime ? (

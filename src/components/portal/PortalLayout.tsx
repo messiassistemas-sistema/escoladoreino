@@ -37,13 +37,13 @@ import { settingsService } from "@/services/settingsService";
 import { studentsService } from "@/services/studentsService";
 
 const sidebarLinks = [
-  { href: "/portal", label: "Início", icon: LayoutDashboard, id: "tour-nav-home" },
-  { href: "/portal/notas", label: "Notas e Médias", icon: ClipboardList, id: "tour-nav-grades" },
+  { href: "/portal", label: "Início", icon: LayoutDashboard },
+  { href: "/portal/notas", label: "Notas e Médias", icon: ClipboardList },
   { href: "/portal/presenca", label: "Frequência", icon: Calendar },
-  { href: "/portal/calendario", label: "Calendário letivo", icon: Calendar, id: "tour-nav-calendar" },
-  { href: "/portal/materiais", label: "Materiais de Estudo", icon: FileText, id: "tour-nav-materials" },
-  { href: "/portal/avisos", label: "Comunicados", icon: Bell, id: "tour-nav-announcements" },
-  { href: "/portal/perfil", label: "Meu Perfil", icon: User, id: "tour-nav-profile" },
+  { href: "/portal/calendario", label: "Calendário letivo", icon: Calendar },
+  { href: "/portal/materiais", label: "Materiais de Estudo", icon: FileText },
+  { href: "/portal/avisos", label: "Comunicados", icon: Bell },
+  { href: "/portal/perfil", label: "Meu Perfil", icon: User },
 ];
 
 interface PortalLayoutProps {
@@ -55,7 +55,6 @@ interface PortalLayoutProps {
 
 import { ProfileDialog } from "@/components/profile/ProfileDialog";
 import { DailyQuoteModal } from "@/components/portal/DailyQuoteModal";
-import { PortalTour } from "@/components/portal/PortalTour";
 
 export function PortalLayout({ children, title, description }: PortalLayoutProps) {
   const location = useLocation();
@@ -144,7 +143,7 @@ export function PortalLayout({ children, title, description }: PortalLayoutProps
         </div>
 
         {/* User Quick Profile */}
-        <div className="px-4 py-6" id="tour-profile-summary">
+        <div className="px-4 py-6">
           <div className="rounded-2xl bg-sidebar-accent/30 p-4 backdrop-blur-sm border border-sidebar-border/30">
             <div className="flex items-center gap-3">
               <Avatar className="h-10 w-10 border-2 border-sidebar-primary/20">
@@ -174,7 +173,6 @@ export function PortalLayout({ children, title, description }: PortalLayoutProps
               <Link
                 key={link.href}
                 to={link.href}
-                id={link.id}
                 onClick={() => setIsSidebarOpen(false)}
                 className={cn(
                   "group relative flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200",
@@ -198,7 +196,7 @@ export function PortalLayout({ children, title, description }: PortalLayoutProps
             );
           })}
 
-          <div className="pt-8 opacity-40" id="tour-support">
+          <div className="pt-8 opacity-40">
             <p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.2em]">
               Suporte
             </p>
@@ -211,22 +209,12 @@ export function PortalLayout({ children, title, description }: PortalLayoutProps
                 <Settings className="h-5 w-5" />
                 <span>Configurações</span>
               </Link>
-              <button
-                onClick={() => {
-                  window.dispatchEvent(new CustomEvent('restart-portal-tour'));
-                  setIsSidebarOpen(false);
-                }}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-              >
-                <PlayCircle className="h-5 w-5" />
-                <span>Reiniciar Tour</span>
-              </button>
             </div>
           </div>
         </nav>
 
         {/* Footer */}
-        <div className="mt-auto border-t border-sidebar-border/30 p-4 bg-sidebar-accent/10 backdrop-blur-md" id="tour-logout">
+        <div className="mt-auto border-t border-sidebar-border/30 p-4 bg-sidebar-accent/10 backdrop-blur-md">
           <Link to="/">
             <Button
               variant="ghost"
@@ -315,8 +303,6 @@ export function PortalLayout({ children, title, description }: PortalLayoutProps
         userEmail={userData.email}
       />
       <DailyQuoteModal />
-      {/* Tour apenas para admins */}
-      {role === 'admin' && <PortalTour runOnMount={true} />}
-    </div>
+    </div >
   );
 }
