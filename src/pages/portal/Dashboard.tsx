@@ -215,7 +215,7 @@ export default function PortalDashboard() {
           ].map((stat, i) => (
             <motion.div key={i} variants={itemVariants}>
               <Card className={cn("overflow-hidden border-none transition-all hover:scale-[1.02] active:scale-[0.98] shadow-soft bg-background/50 backdrop-blur-sm border", stat.border)}>
-                <CardContent className="p-6">
+                <CardContent className="p-4 md:p-6">
                   <div className="flex items-center justify-between">
                     <div className={cn("flex h-12 w-12 items-center justify-center rounded-2xl", stat.bg)}>
                       <stat.icon className={cn("h-6 w-6", stat.color)} />
@@ -265,7 +265,7 @@ export default function PortalDashboard() {
                           <Badge className="bg-primary/90 text-[10px] font-bold">AGENDADA</Badge>
                         </div>
                       </div>
-                      <CardContent className="flex flex-1 flex-col justify-between p-6">
+                      <CardContent className="flex flex-1 flex-col justify-between p-4 md:p-6">
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
                             <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
@@ -286,11 +286,11 @@ export default function PortalDashboard() {
                           <p className="text-sm font-medium text-muted-foreground">Horário: {aula.time}</p>
                         </div>
 
-                        <div className="mt-6 flex items-center justify-between">
+                        <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                           <div className="flex items-center gap-4 text-sm font-semibold text-muted-foreground">
                             <span className="flex items-center gap-1.5"><Clock className="h-4 w-4 text-primary" /> {aula.time}</span>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                             {(aula.recording_link && (
                               student?.modality === 'online' ||
                               (student?.modality === 'presencial' && aula.release_for_presencial)

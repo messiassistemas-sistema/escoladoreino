@@ -234,7 +234,7 @@ export default function PortalCalendario() {
                     </Card>
                   ))
                 ) : (
-                  <div className="rounded-[2rem] border-2 border-dashed border-border/50 p-12 text-center bg-muted/20">
+                  <div className="rounded-[2rem] border-2 border-dashed border-border/50 p-6 md:p-12 text-center bg-muted/20">
                     <div className="mx-auto w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
                       <Layers className="h-8 w-8 text-muted-foreground/30" />
                     </div>

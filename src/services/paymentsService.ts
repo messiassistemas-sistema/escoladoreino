@@ -52,21 +52,18 @@ export const paymentsService = {
     },
 
     async approvePayment(id: string, studentEmail: string, studentName: string): Promise<void> {
-        // 1. Create Auth User & Send Email (Edge Function)
-        const { data: fnData, error: fnError } = await supabase.functions.invoke("manage-user", {
-            body: { email: studentEmail, name: studentName }
-        });
+        // 1. Find Student by Email
+        // We need the student ID to call the correct Edge Function
+        const student = await import("./studentsService").then(m => m.studentsService.getStudentByEmail(studentEmail));
 
-        if (fnError) {
-            console.error("Functions invoke error:", fnError);
-            throw new Error(`Erro ao gerar credenciais: ${fnError.message}`);
+        if (!student) {
+            throw new Error(`Aluno não encontrado com o email: ${studentEmail}`);
         }
 
-        if (fnData && !fnData.success) {
-            throw new Error(fnData.error || "Falha ao criar usuário de acesso.");
-        }
+        // 2. Call Approve Student Function (Handles credentials & notifications)
+        await import("./studentsService").then(m => m.studentsService.approveStudent(student.id));
 
-        // 2. Update Payment Status
+        // 3. Update Payment Status locally
         const { error: paymentError } = await supabase
             .from("payments")
             .update({ status: 'approved', last_updated_at: new Date().toISOString() })
@@ -74,16 +71,9 @@ export const paymentsService = {
 
         if (paymentError) throw paymentError;
 
-        // 3. Activate Student
-        const { error: studentError } = await supabase
-            .from("students")
-            .update({ status: 'ativo' })
-            .eq("email", studentEmail);
-
-        if (studentError) {
-            console.error("Error activating student:", studentError);
-            throw studentError;
-        }
+        // Note: The Edge Function 'approve-student' already updates the student status to 'ativo',
+        // so we don't strictly need to do it here again, but we could for redundancy.
+        // For now, trusting the Edge Function.
     },
 
     async deletePayment(id: string): Promise<void> {
