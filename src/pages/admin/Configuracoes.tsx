@@ -11,6 +11,8 @@ import {
   Key,
   Users,
   MessageCircle,
+  Book,
+  Clock,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -129,10 +131,14 @@ export default function AdminConfiguracoes() {
     <AdminLayout title="Configurações" description="Configurações gerais do sistema">
       <div className="space-y-6">
         <Tabs defaultValue="escola" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:grid-cols-5">
+          <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:grid-cols-6">
             <TabsTrigger value="escola" className="gap-2">
               <School className="h-4 w-4" />
               <span className="hidden sm:inline">Escola</span>
+            </TabsTrigger>
+            <TabsTrigger value="academico" className="gap-2">
+              <Book className="h-4 w-4" />
+              <span className="hidden sm:inline">Gestão Acadêmica</span>
             </TabsTrigger>
             {isAdmin && (
               <TabsTrigger value="pagamentos" className="gap-2">
@@ -301,6 +307,95 @@ export default function AdminConfiguracoes() {
                   </div>
                 </CardContent>
 
+              </Card>
+            </motion.div>
+          </TabsContent>
+
+          {/* Gestão Acadêmica */}
+          <TabsContent value="academico">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <Card className="shadow-soft">
+                <CardHeader>
+                  <CardTitle className="font-display">Gestão Acadêmica e Alertas</CardTitle>
+                  <CardDescription>
+                    Configure limites de faltas e horários para o sistema de presença.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-4">
+                      <h4 className="font-semibold text-sm">Alertas por Faltas (Módulo)</h4>
+                      <div className="space-y-2">
+                        <Label htmlFor="absences_alert_threshold">Limite de Faltas para Alerta</Label>
+                        <Input
+                          id="absences_alert_threshold"
+                          type="number"
+                          value={formData.absences_alert_threshold || 2}
+                          onChange={(e) => handleChange("absences_alert_threshold", Number(e.target.value))}
+                        />
+                        <p className="text-xs text-muted-foreground">O aluno e a secretaria serão notificados após atingir este número de faltas.</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="absences_fail_threshold">Limite de Faltas para Reprovação</Label>
+                        <Input
+                          id="absences_fail_threshold"
+                          type="number"
+                          value={formData.absences_fail_threshold || 3}
+                          onChange={(e) => handleChange("absences_fail_threshold", Number(e.target.value))}
+                        />
+                        <p className="text-xs text-muted-foreground">A diretoria será notificada quando o aluno for reprovado por faltas.</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h4 className="font-semibold text-sm">Monitoramento em Tempo Real</h4>
+                      <div className="space-y-2">
+                        <Label htmlFor="class_start_time" className="flex items-center gap-2">
+                          <Clock className="h-3.5 w-3.5 text-muted-foreground" /> Horário de Início das Aulas
+                        </Label>
+                        <Input
+                          id="class_start_time"
+                          type="time"
+                          value={formData.class_start_time || "19:30"}
+                          onChange={(e) => handleChange("class_start_time", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="check_in_deadline_time" className="flex items-center gap-2">
+                          <Clock className="h-3.5 w-3.5 text-muted-foreground" /> Horário Limite de Alerta (20:15h)
+                        </Label>
+                        <Input
+                          id="check_in_deadline_time"
+                          type="time"
+                          value={formData.check_in_deadline_time || "20:15"}
+                          onChange={(e) => handleChange("check_in_deadline_time", e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground">Neste horário, o sistema avisará sobre alunos que ainda não chegaram.</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="secretary_phone">WhatsApp de Alertas (Secretaria)</Label>
+                        <Input
+                          id="secretary_phone"
+                          placeholder="5511999999999"
+                          value={formData.secretary_phone || ""}
+                          onChange={(e) => handleChange("secretary_phone", e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground">Número que receberá as notificações de atraso (com DDI e DDD).</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 p-4 border border-blue-100 dark:border-blue-900/30">
+                    <h5 className="text-sm font-bold text-blue-800 dark:text-blue-300 mb-1">Resumo da Regra Vigente</h5>
+                    <p className="text-sm text-blue-700 dark:text-blue-400">
+                      Os alunos têm aulas às {formData.class_start_time}. Se não fizerem check-in até as {formData.check_in_deadline_time}, um alerta será gerado.
+                      Além disso, com {formData.absences_alert_threshold} faltas acumuladas no módulo eles recebem um aviso, e com {formData.absences_fail_threshold} faltas são reprovados.
+                    </p>
+                  </div>
+                </CardContent>
               </Card>
             </motion.div>
           </TabsContent>

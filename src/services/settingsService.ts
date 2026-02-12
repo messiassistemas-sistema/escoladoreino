@@ -29,6 +29,11 @@ export interface SystemSettings {
     sender_name: string | null;
     logo_url: string | null;
     whatsapp_welcome_message: string | null;
+    absences_alert_threshold: number;
+    absences_fail_threshold: number;
+    class_start_time: string;
+    check_in_deadline_time: string;
+    secretary_phone: string | null;
     updated_at: string;
 }
 
@@ -88,6 +93,11 @@ export const settingsService = {
                 sender_name: null,
                 logo_url: null,
                 whatsapp_welcome_message: "Olá {nome}, que bom que sua matrícula foi feita na Escola do Reino! Em breve entraremos em contato.",
+                absences_alert_threshold: 2,
+                absences_fail_threshold: 3,
+                class_start_time: "19:30",
+                check_in_deadline_time: "20:15",
+                secretary_phone: null,
                 updated_at: new Date().toISOString()
             } as SystemSettings;
         }
@@ -117,6 +127,10 @@ export const settingsService = {
                     min_attendance: updateData.min_attendance || 75,
                     enrollment_value: updateData.enrollment_value || 100,
                     max_installments: updateData.max_installments || 12,
+                    absences_alert_threshold: updateData.absences_alert_threshold || 2,
+                    absences_fail_threshold: updateData.absences_fail_threshold || 3,
+                    class_start_time: updateData.class_start_time || "19:30",
+                    check_in_deadline_time: updateData.check_in_deadline_time || "20:15",
                     updated_at: new Date().toISOString(),
                 })
                 .select()
