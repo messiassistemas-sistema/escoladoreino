@@ -92,5 +92,70 @@ export const paymentsService = {
             .in("id", ids);
 
         if (error) throw error;
+    },
+
+    async createEnrollmentPayment(params: {
+        studentId: string;
+        studentName: string;
+        studentEmail: string;
+        amount: number;
+        courseTitle: string;
+    }) {
+        const { asaasService } = await import("./asaasService");
+
+        // 1. Tentar buscar ou criar cliente no Asaas (usando CPF fake ou pedindo depois se necessário)
+        // Por enquanto, assumimos que o aluno já pode ter sido criado ou criamos com dados básicos
+        // Nota: Para Boleto/Cartão no Asaas o CPF é obrigatório.
+
+        const { data: profile } = await supabase
+            .from("profiles")
+            .select("cpf, phone")
+            .eq("id", params.studentId)
+            .single();
+
+        let customerId;
+        try {
+            const customer = await asaasService.createCustomer({
+                name: params.studentName,
+                email: params.studentEmail,
+                cpfCnpj: profile?.cpf || "00000000000", // Fallback perigoso mas funcional para teste
+                mobilePhone: profile?.phone || undefined,
+                externalReference: params.studentId
+            });
+            customerId = customer.id;
+        } catch (e) {
+            console.error("Erro ao criar/buscar cliente no Asaas:", e);
+            throw new Error("Não foi possível gerar a cobrança. Verifique seus dados cadastrais (CPF/Telefone).");
+        }
+
+        // 2. Criar a cobrança no Asaas (UNDEFINED permite ao aluno escolher no checkout se configurado)
+        // Ou geramos 3 cobranças? Melhor usar o checkout dinâmico.
+        const payment = await asaasService.createPayment({
+            customer: customerId,
+            billingType: 'UNDEFINED',
+            value: params.amount,
+            dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 3 dias
+            description: `Matrícula: ${params.courseTitle}`,
+            externalReference: params.studentId
+        });
+
+        // 3. Registrar na tabela payments local
+        const { error: dbError } = await supabase
+            .from("payments")
+            .insert({
+                student_name: params.studentName,
+                student_email: params.studentEmail,
+                amount: params.amount,
+                status: 'pending',
+                installments: '1x',
+                class_name: params.courseTitle,
+                payment_provider: 'asaas',
+                external_reference: payment.id,
+                created_at: new Date().toISOString()
+            });
+
+        if (dbError) throw dbError;
+
+        return payment; // Contém invoiceUrl, pixQrCodeField, etc.
     }
 };

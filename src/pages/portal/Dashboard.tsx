@@ -24,13 +24,18 @@ import { useQuery } from "@tanstack/react-query";
 import { studentsService } from "@/services/studentsService";
 import { lessonsService } from "@/services/lessonsService";
 import { announcementsService } from "@/services/announcementsService";
+import { coursesService } from "@/services/coursesService";
 import { LessonDetailsDialog } from "@/components/portal/LessonDetailsDialog";
+import { EnrollmentPaymentModal } from "@/components/portal/EnrollmentPaymentModal";
 import { useState } from "react";
+import { Sparkles, ArrowRight, Zap } from "lucide-react";
 
 export default function PortalDashboard() {
-  const { user } = useAuth();
+  const { user, profile, isAdmin } = useAuth();
   const [selectedLesson, setSelectedLesson] = useState<any>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<any>(null);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   const parseLocalDate = (dateStr: string) => {
     const [year, month, day] = dateStr.split('-').map(Number);
@@ -66,6 +71,12 @@ export default function PortalDashboard() {
   const { data: announcements = [] } = useQuery({
     queryKey: ['announcements'],
     queryFn: announcementsService.getAnnouncements
+  });
+
+  const { data: availableCourses = [], refetch: refetchCourses } = useQuery({
+    queryKey: ['available-courses', user?.id],
+    queryFn: () => user?.id ? coursesService.getAvailableCourses(user.id) : [],
+    enabled: !!user?.id
   });
 
   // Process Stats
@@ -229,6 +240,121 @@ export default function PortalDashboard() {
             </div>
           </div>
         </motion.div>
+
+        {/* Admin Debug Message */}
+        {isAdmin && availableCourses.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="p-4 rounded-xl border border-yellow-500/20 bg-yellow-500/5 text-center"
+          >
+            <p className="text-xs font-bold text-yellow-600/80 uppercase tracking-widest mb-1">Dica de Admin</p>
+            <p className="text-sm text-muted-foreground">
+              A seção de matrículas não apareceu porque a tabela <code className="text-primary font-bold">courses</code> está vazia ou não há cursos ativos disponíveis.
+              Cadastre um curso com <code className="text-emerald-500 font-bold">active: true</code> para testar.
+            </p>
+          </motion.div>
+        )}
+
+        {/* New Course Enrollment Section - Only if next course is available */}
+        {availableCourses.length > 0 && (
+          <motion.div
+            variants={itemVariants}
+            className={cn(
+              "group relative overflow-hidden rounded-2xl border-2 p-4 md:p-6 shadow-lg transition-all duration-300",
+              availableCourses[0].isLocked
+                ? "border-muted bg-muted/5 shadow-none grayscale-[0.5]"
+                : "border-emerald-500/30 bg-emerald-500/5 shadow-emerald-500/10"
+            )}
+          >
+            <div className={cn(
+              "absolute top-[-20%] right-[-5%] w-64 h-64 rounded-full blur-3xl -z-10 transition-all duration-700",
+              availableCourses[0].isLocked ? "bg-muted/10" : "bg-emerald-500/10 group-hover:bg-emerald-500/20"
+            )} />
+
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="flex gap-4 md:gap-6 items-center flex-1">
+                <div className={cn(
+                  "h-16 w-16 md:h-20 md:w-20 shrink-0 rounded-2xl flex items-center justify-center shadow-lg",
+                  availableCourses[0].isLocked
+                    ? "bg-muted text-muted-foreground shadow-none"
+                    : "bg-emerald-500 text-white shadow-emerald-500/30"
+                )}>
+                  {availableCourses[0].isLocked ? (
+                    <Clock className="h-8 w-8 md:h-10 md:w-10 opacity-50" />
+                  ) : (
+                    <Sparkles className="h-8 w-8 md:h-10 md:w-10 animate-pulse" />
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    {availableCourses[0].isLocked ? (
+                      <Badge variant="outline" className="font-black text-[10px] tracking-wider border-muted-foreground/30 text-muted-foreground">AGUARDANDO</Badge>
+                    ) : (
+                      <Badge className="bg-emerald-500 hover:bg-emerald-600 font-black text-[10px] tracking-wider">LIBERADO</Badge>
+                    )}
+                    <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Próxima Etapa</span>
+                  </div>
+                  <h3 className="font-display text-xl md:text-2xl font-black text-foreground leading-tight">
+                    {availableCourses[0].title}
+                  </h3>
+                  <p className="text-sm font-bold text-muted-foreground max-w-lg line-clamp-2 md:line-clamp-none">
+                    {availableCourses[0].isLocked
+                      ? "Este módulo será liberado para matrícula assim que você concluir sua disciplina atual. Continue firme!"
+                      : (availableCourses[0].description || "Sua jornada teológica continua aqui. Matricule-se no próximo módulo e não perca o ritmo!")}
+                  </p>
+                </div>
+              </div>
+
+              <div className={cn(
+                "flex flex-col items-center gap-3 w-full md:w-auto md:min-w-[200px] p-4 rounded-xl backdrop-blur-sm border shadow-sm",
+                availableCourses[0].isLocked
+                  ? "bg-muted/20 border-border/50"
+                  : "bg-background/50 border-emerald-500/20"
+              )}>
+                <div className="text-center">
+                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-1">Investimento</p>
+                  <p className={cn(
+                    "text-3xl font-black tracking-tight",
+                    availableCourses[0].isLocked ? "text-muted-foreground/50" : "text-emerald-600"
+                  )}>
+                    R$ {availableCourses[0].price?.toFixed(2) || "35,00"}
+                  </p>
+                </div>
+                <Button
+                  onClick={() => {
+                    if (!availableCourses[0].isLocked) {
+                      setSelectedCourse(availableCourses[0]);
+                      setIsPaymentModalOpen(true);
+                    }
+                  }}
+                  disabled={availableCourses[0].isLocked}
+                  className={cn(
+                    "w-full font-black rounded-xl shadow-lg flex items-center justify-center gap-2 h-12 transition-all",
+                    availableCourses[0].isLocked
+                      ? "bg-muted-foreground/20 text-muted-foreground cursor-not-allowed shadow-none"
+                      : "bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/20"
+                  )}
+                >
+                  {availableCourses[0].isLocked ? (
+                    <>MÓDULO BLOQUEADO</>
+                  ) : (
+                    <>
+                      <Zap className="h-4 w-4 fill-current" />
+                      MATRICULAR AGORA
+                      <ArrowRight className="h-4 w-4" />
+                    </>
+                  )}
+                </Button>
+                {availableCourses[0].isLocked && (
+                  <p className="text-[10px] font-bold text-muted-foreground text-center">
+                    Conclua seu módulo atual primeiro
+                  </p>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -458,6 +584,16 @@ export default function PortalDashboard() {
         lesson={selectedLesson}
         open={isDetailsOpen}
         onOpenChange={setIsDetailsOpen}
+      />
+
+      <EnrollmentPaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => {
+          setIsPaymentModalOpen(false);
+          refetchCourses();
+        }}
+        course={selectedCourse}
+        student={student || null}
       />
     </PortalLayout>
   );
