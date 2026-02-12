@@ -80,10 +80,10 @@ export default function PortalPresenca() {
           await queryClient.invalidateQueries({ queryKey: ['student-attendance'] });
           toast.dismiss();
           toast.success("Presença registrada com sucesso! 🎉");
-        } catch (error) {
+        } catch (error: any) {
           console.error(error);
           toast.dismiss();
-          toast.error("Erro ao registrar presença. Tente novamente.");
+          toast.error(`Erro: ${error.message || "Falha ao registrar"}`);
         }
       }
     }
