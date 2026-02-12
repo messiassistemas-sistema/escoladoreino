@@ -150,7 +150,7 @@ export default function PortalCalendario() {
                     {date?.toLocaleDateString("pt-BR", { weekday: 'long', day: '2-digit', month: 'long' }) || 'Selecione uma data'}
                   </h3>
                 </div>
-                {aulasNoDia.length > 0 && <Badge className="bg-emerald-500/10 text-emerald-600 border-none font-black text-xs h-6 self-start sm:self-center">{aulasNoDia.length} Aulas</Badge>}
+                {aulasNoDia.length > 0 && <Badge className="bg-emerald-500/10 text-emerald-600 border-none font-black text-xs h-6 self-start md:self-center">{aulasNoDia.length} Aulas</Badge>}
               </div>
 
               <div className="grid gap-4">
@@ -248,9 +248,9 @@ export default function PortalCalendario() {
 
           {/* Next Classes List */}
           <motion.div variants={itemVariants} className="space-y-4 pt-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between px-1 gap-2">
+            <div className="flex flex-col md:flex-row md:items-center justify-between px-1 gap-2">
               <h3 className="font-display text-2xl font-bold">Resumo das Próximas Aulas</h3>
-              <Button variant="ghost" size="sm" className="text-xs font-bold text-primary gap-1 w-full sm:w-auto justify-start sm:justify-center">Ver todas <ChevronRight className="h-3 w-3" /></Button>
+              <Button variant="ghost" size="sm" className="text-xs font-bold text-primary gap-1 w-full md:w-auto justify-start md:justify-center">Ver todas <ChevronRight className="h-3 w-3" /></Button>
             </div>
 
             <div className="grid gap-3">

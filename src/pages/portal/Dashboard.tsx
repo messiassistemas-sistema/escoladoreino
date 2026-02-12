@@ -235,10 +235,10 @@ export default function PortalDashboard() {
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Próximas Aulas - Left Column (2/3 width) */}
           <motion.div variants={itemVariants} className="lg:col-span-2 space-y-6" id="tour-agenda">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <h3 className="font-display text-2xl font-bold tracking-tight">Agenda de Aulas</h3>
               <Link to="/portal/calendario">
-                <Button variant="ghost" size="sm" className="font-bold text-primary group w-full sm:w-auto justify-start sm:justify-center">
+                <Button variant="ghost" size="sm" className="font-bold text-primary group w-full md:w-auto justify-start md:justify-center">
                   Cronograma Completo <ChevronRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Button>
               </Link>
@@ -286,11 +286,11 @@ export default function PortalDashboard() {
                           <p className="text-sm font-medium text-muted-foreground">Horário: {aula.time}</p>
                         </div>
 
-                        <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="mt-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                           <div className="flex items-center gap-4 text-sm font-semibold text-muted-foreground">
                             <span className="flex items-center gap-1.5"><Clock className="h-4 w-4 text-primary" /> {aula.time}</span>
                           </div>
-                          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                             {(aula.recording_link && (
                               student?.modality === 'online' ||
                               (student?.modality === 'presencial' && aula.release_for_presencial)
@@ -360,7 +360,7 @@ export default function PortalDashboard() {
 
             {/* Avisos Importantes */}
             <motion.div variants={itemVariants} id="tour-announcements">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                 <h3 className="font-display text-xl font-bold">Comunicados</h3>
                 <Link to="/portal/avisos">
                   <Badge variant="outline" className="cursor-pointer border-primary/20 text-primary hover:bg-primary/5 transition-colors font-bold w-fit">VER TODOS</Badge>
