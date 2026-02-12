@@ -146,7 +146,7 @@ export default function PortalCalendario() {
               <div className="flex items-center justify-between px-1">
                 <div className="space-y-1">
                   <p className="text-[10px] font-black uppercase tracking-widest text-primary/60">Programação para</p>
-                  <h3 className="font-display text-3xl font-black lowercase first-letter:uppercase tracking-tight leading-none">
+                  <h3 className="font-display text-2xl md:text-3xl font-black lowercase first-letter:uppercase tracking-tight leading-none">
                     {date?.toLocaleDateString("pt-BR", { weekday: 'long', day: '2-digit', month: 'long' }) || 'Selecione uma data'}
                   </h3>
                 </div>
@@ -249,7 +249,7 @@ export default function PortalCalendario() {
           {/* Next Classes List */}
           <motion.div variants={itemVariants} className="space-y-4 pt-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between px-1 gap-2">
-              <h3 className="font-display text-2xl font-bold">Resumo das Próximas Aulas</h3>
+              <h3 className="font-display text-xl md:text-2xl font-bold">Resumo das Próximas Aulas</h3>
               <Button variant="ghost" size="sm" className="text-xs font-bold text-primary gap-1 w-full md:w-auto justify-start md:justify-center">Ver todas <ChevronRight className="h-3 w-3" /></Button>
             </div>
 
@@ -265,7 +265,7 @@ export default function PortalCalendario() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 1 + (index * 0.1) }}
                     className={cn(
-                      "group flex items-center gap-6 rounded-2xl bg-background/50 border border-border/50 p-4 transition-all hover:bg-white hover:shadow-card hover:border-transparent cursor-pointer",
+                      "group flex items-center gap-3 md:gap-6 rounded-2xl bg-background/50 border border-border/50 p-3 md:p-4 transition-all hover:bg-white hover:shadow-card hover:border-transparent cursor-pointer",
                       isToday && "ring-2 ring-primary ring-offset-4 ring-offset-background"
                     )}
                     onClick={() => {

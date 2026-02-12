@@ -60,7 +60,8 @@ export default function AdminDashboard() {
         paymentsResp,
         attendanceResp,
         monthlyGrowthResp,
-        attendanceTrendgResp
+        attendanceTrendgResp,
+        settingsResp
       ] = await Promise.all([
         supabase.from("students").select("*", { count: "exact", head: true }),
         supabase.from("teachers").select("*", { count: "exact", head: true }),
@@ -71,7 +72,8 @@ export default function AdminDashboard() {
         supabase.from("students").select("created_at"),
         supabase.from("attendance_records")
           .select("created_at, status")
-          .gte("created_at", sevenDaysAgo.toISOString())
+          .gte("created_at", sevenDaysAgo.toISOString()),
+        supabase.from("system_settings").select("enrollment_value").single()
       ]);
 
       // --- Financials ---
@@ -89,8 +91,8 @@ export default function AdminDashboard() {
       const inactiveStudentsCount = (allStudentStatuses || []).filter(s => s.status === 'inativo' || s.status === 'cancelado').length;
       const pendingCount = (allStudentStatuses || []).filter(s => s.status === 'pendente').length;
 
-      const EST_TUITION = 150;
-      const expectedRevenue = activeStudentsCount * EST_TUITION;
+      const estTuition = settingsResp.data?.enrollment_value || 100;
+      const expectedRevenue = activeStudentsCount * estTuition;
 
       const defaultRate = expectedRevenue > 0
         ? Math.max(0, ((expectedRevenue - monthlyRevenue) / expectedRevenue) * 100).toFixed(1)

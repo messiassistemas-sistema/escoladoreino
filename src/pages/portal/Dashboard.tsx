@@ -184,14 +184,14 @@ export default function PortalDashboard() {
         )}
 
         {/* Welcome Banner / Hero */}
-        <motion.div variants={itemVariants} className="relative overflow-hidden rounded-3xl bg-primary px-8 py-10 text-primary-foreground shadow-2xl shadow-primary/20">
+        <motion.div variants={itemVariants} className="relative overflow-hidden rounded-3xl bg-primary px-6 py-8 md:px-8 md:py-10 text-primary-foreground shadow-2xl shadow-primary/20">
           <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-white/10 to-transparent" />
           <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div className="space-y-2">
               <Badge variant="secondary" className="bg-emerald-500 text-white hover:bg-emerald-600 border-none px-3 py-1 font-bold">
                 MATRÍCULA ATIVA
               </Badge>
-              <h2 className="font-display text-3xl font-bold tracking-tight md:text-4xl">Sua jornada continua hoje.</h2>
+              <h2 className="font-display text-2xl font-bold tracking-tight md:text-3xl lg:text-4xl">Sua jornada continua hoje.</h2>
               <p className="max-w-md text-primary-foreground/80 font-medium">
                 Mantenha o foco e alcance seus objetivos teológicos!
               </p>

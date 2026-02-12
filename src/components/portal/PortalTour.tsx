@@ -8,7 +8,11 @@ interface PortalTourProps {
 
 export const PortalTour: React.FC<PortalTourProps> = ({ runOnMount = false }) => {
     const [run, setRun] = useState(false);
-    const { user } = useAuth();
+    const { user, role } = useAuth();
+
+    if (role !== 'admin') {
+        return null;
+    }
 
     useEffect(() => {
         // Check if user has already completed the tour
