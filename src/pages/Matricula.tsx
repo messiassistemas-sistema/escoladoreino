@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { landingService } from "@/services/landingService";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { ArrowRight, CheckCircle, Loader2, MapPin, Globe, AlertTriangle } from "lucide-react";
+import { ArrowRight, CheckCircle, Loader2, MapPin, Globe, AlertTriangle, Search, User, Mail, Phone, CreditCard, X } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,9 @@ import { settingsService } from "@/services/settingsService";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function Matricula() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+
   useEffect(() => {
     document.title = "Escola do Reino - Matrícula";
   }, []);
@@ -51,17 +54,16 @@ export default function Matricula() {
 
   useEffect(() => {
     if (cursoSelecionado) {
-      // Verificamos se o curso da URL está disponível (ativo)
-      // Ajuste: available !== false cobre tanto true quanto undefined (novo curso)
+      const normalize = (val: string) => val.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
       const isActive = content?.courses_data?.some(c =>
-        c.title.trim().toLowerCase() === cursoSelecionado.trim().toLowerCase() &&
+        normalize(c.title) === normalize(cursoSelecionado) &&
         c.available !== false
       );
 
       if (isActive) {
         setSelectedCourseTitle(cursoSelecionado.trim());
       } else if (content?.courses_data) {
-        // Se não estiver ativo, pegamos o primeiro ativo disponível
         const firstActive = content.courses_data.find(c => c.available !== false);
         if (firstActive) setSelectedCourseTitle(firstActive.title);
       }
@@ -88,7 +90,6 @@ export default function Matricula() {
 
   // const courseTitle = selectedCourseData?.title || "Curso (Selecione na página anterior)";
 
-  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     nome: "",
     email: "",
@@ -98,9 +99,9 @@ export default function Matricula() {
     acceptTerms: false,
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("handleSubmit iniciado", formData);
+    console.log("handleSubmit (Validação)", formData);
 
     if (!formData.acceptTerms) {
       toast({
@@ -131,13 +132,21 @@ export default function Matricula() {
       return;
     }
 
+    setShowConfirmation(true);
+  };
+
+  const processEnrollment = async () => {
     setIsLoading(true);
+    setShowConfirmation(false);
 
     try {
+      const cleanPhone = formData.telefone.replace(/\D/g, "");
+      const cleanCpf = formData.cpf.replace(/\D/g, "");
+
       // 1. Create Student (DB)
       const { studentsService } = await import("@/services/studentsService");
 
-      await studentsService.createStudent({
+      const newStudent = await studentsService.createStudent({
         name: formData.nome,
         email: formData.email,
         phone: formData.telefone,
@@ -149,10 +158,8 @@ export default function Matricula() {
         modality: formData.modality
       });
 
-      // 2. Create Asaas Customer
-      const cleanCpf = formData.cpf.replace(/\D/g, "");
-      const cleanPhone = formData.telefone.replace(/\D/g, "");
-
+      // 3. Payment Step (Simplified to Asaas)
+      let checkoutUrl = '';
       const customer = await asaasService.createCustomer({
         name: formData.nome,
         email: formData.email,
@@ -161,64 +168,25 @@ export default function Matricula() {
         externalReference: formData.email
       });
 
-      // 2.5 Send WhatsApp Notification
-      try {
-        const firstName = formData.nome.split(" ")[0];
-        // Use configured message or fallback
-        const messageTemplate = settings?.whatsapp_welcome_message || "Olá {nome}, que bom que sua matrícula foi feita na Escola do Reino! Em breve entraremos em contato.";
-        const finalMessage = messageTemplate.replace(/{nome}/g, firstName).replace(/{name}/g, firstName);
-
-        console.log("Tentando enviar WhatsApp...", { phone: cleanPhone, message: finalMessage });
-
-        const { data, error } = await supabase.functions.invoke("send-whatsapp", {
-          body: {
-            phone: cleanPhone,
-            message: finalMessage,
-          },
-        });
-
-        if (error) {
-          console.error("Erro na função send-whatsapp:", error);
-          throw error;
-        }
-
-        if (data && data.success === false) {
-          console.error("Erro retornado pela API:", data.error);
-          alert(`Erro no WhatsApp: ${data.error}`);
-          throw new Error(data.error);
-        }
-
-        console.log("WhatsApp enviado com sucesso:", data);
-
-      } catch (waError: any) {
-        console.error("Falha ao enviar WhatsApp (Catch):", waError);
-        // Continue execution, don't block payment flow
-      }
-
-      // 3. Create Payment 
       const payment = await asaasService.createPayment({
         customer: customer.id,
         billingType: 'UNDEFINED',
         value: currentPrice,
         dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         description: `Matrícula: ${selectedCourseData?.title || "Curso Geral"}`,
-        externalReference: `MAT-${Date.now()}`
+        externalReference: newStudent.id // ID do aluno para o Webhook processar
       });
+      checkoutUrl = payment.invoiceUrl;
 
       toast({
         title: "Pré-inscrição realizada!",
         description: "Redirecionando para o pagamento...",
       });
 
-      if (payment.invoiceUrl) {
-        window.location.href = payment.invoiceUrl;
+      if (checkoutUrl) {
+        window.location.href = checkoutUrl;
       } else {
-        toast({
-          title: "Erro",
-          description: "Link de pagamento não gerado.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
+        throw new Error("Link de pagamento não gerado.");
       }
 
     } catch (error: any) {
@@ -383,6 +351,26 @@ export default function Matricula() {
                   />
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="cpf">CPF *</Label>
+                  <Input
+                    id="cpf"
+                    name="cpf"
+                    placeholder="000.000.000-00"
+                    value={formData.cpf}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        cpf: formatCPF(e.target.value),
+                      }))
+                    }
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Usado apenas para emissão de nota fiscal e certificado.
+                  </p>
+                </div>
+
                 <div className="space-y-4">
                   <Label>Modalidade de Estudo *</Label>
                   <div className="grid grid-cols-2 gap-4">
@@ -433,26 +421,6 @@ export default function Matricula() {
                   </AnimatePresence>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="cpf">CPF *</Label>
-                  <Input
-                    id="cpf"
-                    name="cpf"
-                    placeholder="000.000.000-00"
-                    value={formData.cpf}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        cpf: formatCPF(e.target.value),
-                      }))
-                    }
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Usado apenas para emissão de nota fiscal e certificado.
-                  </p>
-                </div>
-
                 {/* Payment Method Selector removed to allow choice at checkout */}
 
                 <div className="rounded-lg bg-muted/50 p-4">
@@ -478,6 +446,7 @@ export default function Matricula() {
                   </div>
                 </div>
 
+
                 <Button type="submit" size="lg" className="w-full gap-2" disabled={isLoading}>
                   {isLoading ? (
                     <>
@@ -496,7 +465,7 @@ export default function Matricula() {
               <div className="mt-6 border-t border-border pt-6">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <CheckCircle className="h-4 w-4 text-success" />
-                  Pagamento seguro via {getPaymentProviderLabel(settings?.payment_provider)}
+                  Pagamento seguro via Asaas
                 </div>
               </div>
             </motion.div>
@@ -515,6 +484,126 @@ export default function Matricula() {
           </div>
         </div>
       </main>
+
+      {/* Modal de Confirmação de Dados */}
+      <AnimatePresence>
+        {showConfirmation && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowConfirmation(false)}
+              className="absolute inset-0 bg-background/80 backdrop-blur-md"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-primary/20 bg-card shadow-2xl"
+            >
+              {/* Header do Modal */}
+              <div className="relative border-b border-primary/10 bg-primary/5 px-6 py-8 text-center sm:px-10">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                  <Search className="h-8 w-8" />
+                </div>
+                <h2 className="text-2xl font-bold tracking-tight text-foreground">Confira seus dados</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Verifique se tudo está correto para garantir o seu acesso.
+                </p>
+                <button
+                  onClick={() => setShowConfirmation(false)}
+                  className="absolute right-4 top-4 rounded-full p-2 text-muted-foreground/50 hover:bg-primary/10 hover:text-primary transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Corpo do Modal */}
+              <div className="px-6 py-8 sm:px-10">
+                <div className="space-y-4">
+                  <div className="group flex items-center gap-4 rounded-2xl border border-primary/5 bg-muted/30 p-4 transition-colors hover:border-primary/20">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-background text-primary shadow-sm">
+                      <User className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Nome Completo</p>
+                      <p className="font-semibold text-foreground">{formData.nome}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="group flex items-center gap-4 rounded-2xl border border-primary/5 bg-muted/30 p-4 transition-colors hover:border-primary/20">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-background text-primary shadow-sm">
+                        <Mail className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">E-mail</p>
+                        <p className="truncate font-semibold text-foreground">{formData.email}</p>
+                      </div>
+                    </div>
+
+                    <div className="group flex items-center gap-4 rounded-2xl border border-primary/5 bg-muted/30 p-4 transition-colors hover:border-primary/20">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-background text-primary shadow-sm">
+                        <Phone className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">WhatsApp</p>
+                        <p className="font-semibold text-foreground">{formData.telefone}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="group flex items-center gap-4 rounded-2xl border border-primary/5 bg-muted/30 p-4 transition-colors hover:border-primary/20">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-background text-primary shadow-sm">
+                        <CreditCard className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">CPF</p>
+                        <p className="font-semibold text-foreground">{formData.cpf}</p>
+                      </div>
+                    </div>
+
+                    <div className="group flex items-center gap-4 rounded-2xl border border-primary/5 bg-muted/30 p-4 transition-colors hover:border-primary/20">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-background text-primary shadow-sm">
+                        <MapPin className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Modalidade</p>
+                        <p className="font-bold text-primary">{formData.modality === 'presencial' ? 'Presencial' : 'Online'}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-8 flex flex-col gap-3">
+                  <Button
+                    onClick={processEnrollment}
+                    size="lg"
+                    className="h-14 w-full rounded-2xl text-lg font-bold shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    Confirmar e Ir para Pagamento
+                  </Button>
+                  <Button
+                    onClick={() => setShowConfirmation(false)}
+                    variant="ghost"
+                    className="h-12 w-full rounded-2xl text-muted-foreground hover:bg-primary/5"
+                  >
+                    Corrigir Informações
+                  </Button>
+                </div>
+
+                <p className="mt-6 text-center text-[10px] text-muted-foreground">
+                  Ao confirmar, você será redirecionado para o ambiente seguro de pagamento do Asaas.
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <Footer />
     </div>
   );

@@ -484,7 +484,7 @@ export default function AdminConfiguracoes() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="payment_api_key">Access Token</Label>
+                      <Label htmlFor="payment_api_key">Access Token (Chave Privada)</Label>
                       <div className="flex gap-2">
                         <Input
                           id="payment_api_key"
@@ -498,9 +498,33 @@ export default function AdminConfiguracoes() {
                         </Button>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Chave de API do provedor selecionado (Mercado Pago ou Asaas).
+                        Access Token secreto do provedor selecionado (Mercado Pago ou Asaas).
                       </p>
                     </div>
+
+                    {formData.payment_provider === 'mercadopago' && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        className="space-y-2"
+                      >
+                        <Label htmlFor="payment_public_key">Public Key (Chave Pública)</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="payment_public_key"
+                            placeholder="APP_USR-••••••••••••••••"
+                            value={formData.payment_public_key || ""}
+                            onChange={(e) => handleChange("payment_public_key", e.target.value)}
+                          />
+                          <Button variant="outline" size="icon">
+                            <School className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Necessária para o checkout transparente do Mercado Pago.
+                        </p>
+                      </motion.div>
+                    )}
 
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">

@@ -2,8 +2,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, BookOpen, Users, Award, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useQuery } from "@tanstack/react-query";
-import { landingService } from "@/services/landingService";
+import { LandingPageContent } from "@/services/landingService";
 
 const stats = [
   { icon: Users, value: "500+", label: "Alunos formados" },
@@ -12,11 +11,7 @@ const stats = [
   { icon: Calendar, value: "2", label: "Anos de formação" },
 ];
 
-export function HeroSection() {
-  const { data: content } = useQuery({
-    queryKey: ["landing-content"],
-    queryFn: landingService.getContent,
-  });
+export function HeroSection({ content }: { content?: LandingPageContent }) {
 
   const displayContent = content || {
     hero_badge: "Matrículas Abertas para 2025",

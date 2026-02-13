@@ -31,22 +31,25 @@ serve(async (req) => {
             { global: { headers: { Authorization: authHeader || "" } } }
         );
 
-        // check if user is admin
-        const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+        // check if user is admin OR if it is a S2S call (Server to Server)
+        const s2sKey = req.headers.get("X-S2S-Api-Key");
+        const internalKey = Deno.env.get("INTERNAL_WEBHOOK_TOKEN");
+        const isS2S = internalKey && s2sKey === internalKey;
 
-        if (authError || !user) {
-            console.error("Authentication failed:", authError?.message || "User not found");
-            return new Response(
-                JSON.stringify({ success: false, error: "Unauthorized: Caller must be logged in.", details: authError }),
-                { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
+        if (!isS2S) {
+            const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+
+            if (authError || !user) {
+                console.error("Authentication failed:", authError?.message || "User not found");
+                return new Response(
+                    JSON.stringify({ success: false, error: "Unauthorized: Caller must be logged in.", details: authError }),
+                    { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+                );
+            }
+            console.log("Authenticated user:", user.email);
+        } else {
+            console.log("Authenticated via S2S Token (Webhook/Internal)");
         }
-
-        console.log("Authenticated user:", user.email);
-
-        // You might want to check for specific 'admin' role metadata here if your app uses it
-        // const isMember = user.user_metadata?.role === 'admin' || user.user_metadata?.role === 'member'; 
-        // if (!isMember) throw new Error("Unauthorized: Only admins can approve students.");
 
         // Admin Client for performing privileged actions (creating users, updating db)
         const supabaseAdmin = createClient(

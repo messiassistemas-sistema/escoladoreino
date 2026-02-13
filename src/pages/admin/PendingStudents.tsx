@@ -10,7 +10,12 @@ import {
     CheckCircle,
     UserCheck,
     Loader2,
+    Square,
+    CheckSquare,
+    ShieldCheck,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,6 +45,9 @@ export default function PendingStudents() {
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const [searchTerm, setSearchTerm] = useState("");
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [isBulkApproving, setIsBulkApproving] = useState(false);
+    const [bulkProgress, setBulkProgress] = useState(0);
 
     // Details Dialog State
     const [detailsStudent, setDetailsStudent] = useState<Student | null>(null);
@@ -79,6 +87,20 @@ export default function PendingStudents() {
 
     const [approvingId, setApprovingId] = useState<string | null>(null);
 
+    const toggleSelect = (id: string) => {
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.length === pendingStudents.length) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(pendingStudents.map(s => s.id));
+        }
+    };
+
     const handleApprove = async (student: Student) => {
         if (!window.confirm(`Deseja aprovar a matrícula de ${student.name}? Isso enviará as credenciais de acesso para o aluno.`)) {
             return;
@@ -104,6 +126,68 @@ export default function PendingStudents() {
         }
     };
 
+    const handleBulkApprove = async () => {
+        if (!window.confirm(`Deseja aprovar ${selectedIds.length} matrículas selecionadas?`)) {
+            return;
+        }
+
+        setIsBulkApproving(true);
+        setBulkProgress(0);
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (let i = 0; i < selectedIds.length; i++) {
+            try {
+                await studentsService.approveStudent(selectedIds[i]);
+                successCount++;
+            } catch (error) {
+                console.error(`Erro ao aprovar aluno ${selectedIds[i]}:`, error);
+                errorCount++;
+            }
+            setBulkProgress(Math.round(((i + 1) / selectedIds.length) * 100));
+        }
+
+        toast({
+            title: "Processamento concluído",
+            description: `${successCount} aprovados, ${errorCount} erros.`,
+        });
+
+        setSelectedIds([]);
+        setIsBulkApproving(false);
+        queryClient.invalidateQueries({ queryKey: ["students"] });
+    };
+
+    const handleBulkDelete = async () => {
+        if (!window.confirm(`Tem certeza que deseja recusar e excluir ${selectedIds.length} matrículas selecionadas? Esta ação não pode ser desfeita.`)) {
+            return;
+        }
+
+        setIsBulkApproving(true); // Reusing isBulkApproving for locking UI
+        setBulkProgress(0);
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (let i = 0; i < selectedIds.length; i++) {
+            try {
+                await studentsService.deleteStudent(selectedIds[i]);
+                successCount++;
+            } catch (error) {
+                console.error(`Erro ao recusar aluno ${selectedIds[i]}:`, error);
+                errorCount++;
+            }
+            setBulkProgress(Math.round(((i + 1) / selectedIds.length) * 100));
+        }
+
+        toast({
+            title: "Processamento concluído",
+            description: `${successCount} recusados, ${errorCount} erros.`,
+        });
+
+        setSelectedIds([]);
+        setIsBulkApproving(false);
+        queryClient.invalidateQueries({ queryKey: ["students"] });
+    };
+
     return (
         <AdminLayout title="Matrículas Pendentes" description="Analise e aprove novas solicitações de matrícula">
             <div className="space-y-6">
@@ -127,9 +211,9 @@ export default function PendingStudents() {
                     </Card>
                 </div>
 
-                {/* Filters */}
+                {/* Filters & Bulk Actions */}
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex flex-1 gap-4">
+                    <div className="flex flex-1 gap-4 items-center">
                         <div className="relative flex-1 sm:max-w-md">
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <Input
@@ -139,6 +223,55 @@ export default function PendingStudents() {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
+
+                        {selectedIds.length > 0 && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="flex items-center gap-2 bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-lg"
+                            >
+                                <span className="text-sm font-medium text-primary">
+                                    {selectedIds.length} selecionados
+                                </span>
+                                <Button
+                                    size="sm"
+                                    className="h-8 bg-primary hover:bg-primary/90 gap-2"
+                                    onClick={handleBulkApprove}
+                                    disabled={isBulkApproving}
+                                >
+                                    {isBulkApproving ? (
+                                        <>
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                            Processando ({bulkProgress}%)
+                                        </>
+                                    ) : (
+                                        <>
+                                            <ShieldCheck className="h-4 w-4" />
+                                            Aprovar
+                                        </>
+                                    )}
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground gap-2"
+                                    onClick={handleBulkDelete}
+                                    disabled={isBulkApproving}
+                                >
+                                    {!isBulkApproving && <Trash2 className="h-4 w-4" />}
+                                    Recusar
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 text-muted-foreground"
+                                    onClick={() => setSelectedIds([])}
+                                    disabled={isBulkApproving}
+                                >
+                                    Cancelar
+                                </Button>
+                            </motion.div>
+                        )}
                     </div>
                 </div>
 
@@ -159,6 +292,12 @@ export default function PendingStudents() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
+                                            <TableHead className="w-[50px]">
+                                                <Checkbox
+                                                    checked={selectedIds.length === pendingStudents.length && pendingStudents.length > 0}
+                                                    onCheckedChange={toggleSelectAll}
+                                                />
+                                            </TableHead>
                                             <TableHead>Aluno</TableHead>
                                             <TableHead>Contato</TableHead>
                                             <TableHead>Turma Solicitada</TableHead>
@@ -168,7 +307,16 @@ export default function PendingStudents() {
                                     </TableHeader>
                                     <TableBody>
                                         {pendingStudents.map((aluno) => (
-                                            <TableRow key={aluno.id}>
+                                            <TableRow
+                                                key={aluno.id}
+                                                className={cn(selectedIds.includes(aluno.id) && "bg-primary/5")}
+                                            >
+                                                <TableCell>
+                                                    <Checkbox
+                                                        checked={selectedIds.includes(aluno.id)}
+                                                        onCheckedChange={() => toggleSelect(aluno.id)}
+                                                    />
+                                                </TableCell>
                                                 <TableCell>
                                                     <div className="flex items-center gap-3">
                                                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 font-display font-semibold text-orange-700">

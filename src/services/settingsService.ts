@@ -12,6 +12,7 @@ export interface SystemSettings {
     min_attendance: number;
     payment_provider: string;
     payment_api_key: string | null;
+    payment_public_key: string | null;
     enrollment_value: number;
     max_installments: number;
     cash_discount: boolean;
@@ -79,6 +80,7 @@ export const settingsService = {
                 min_attendance: 75,
                 payment_provider: "mercadopago",
                 payment_api_key: null,
+                payment_public_key: null,
                 enrollment_value: 100,
                 max_installments: 12,
                 cash_discount: false,

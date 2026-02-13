@@ -2,14 +2,9 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useQuery } from "@tanstack/react-query";
-import { landingService } from "@/services/landingService";
+import { LandingPageContent } from "@/services/landingService";
 
-export function CTASection() {
-  const { data: content } = useQuery({
-    queryKey: ["landing-content"],
-    queryFn: landingService.getContent,
-  });
+export function CTASection({ content }: { content?: LandingPageContent }) {
 
   const displayContent = content || {
     cta_title: "Comece sua jornada de formação teológica hoje",
