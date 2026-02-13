@@ -30,7 +30,7 @@ serve(async (req) => {
             )
         }
 
-        const { userId, fullName, role } = await req.json()
+        const { userId, fullName, role, phone } = await req.json()
 
         if (!userId) {
             return new Response(
@@ -47,10 +47,23 @@ serve(async (req) => {
         // Update Auth Metadata
         const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(
             userId,
-            { user_metadata: { full_name: fullName, role: role } }
+            { user_metadata: { full_name: fullName, role: role, phone: phone } }
         )
 
         if (authError) throw authError
+
+        // Update Profile
+        const { error: profileError } = await supabaseAdmin
+            .from('profiles')
+            .update({
+                full_name: fullName,
+                role: role,
+                phone: phone,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', userId)
+
+        if (profileError) throw profileError
 
         return new Response(
             JSON.stringify({ success: true, message: 'User updated successfully' }),

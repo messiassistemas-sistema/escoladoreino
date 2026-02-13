@@ -1,5 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
@@ -47,6 +48,10 @@ serve(async (req) => {
 
         cleanPhone = "55" + cleanPhone;
 
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+        const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
+
         const instanceId = Deno.env.get("ZAPI_INSTANCE_ID");
         const instanceToken = Deno.env.get("ZAPI_CLIENT_TOKEN");
         const securityToken = Deno.env.get("ZAPI_SECURITY_TOKEN");
@@ -55,8 +60,22 @@ serve(async (req) => {
             throw new Error("Z-API credentials missing in environment variables.");
         }
 
+        // Fetch custom message from settings
+        const { data: settings } = await supabaseAdmin
+            .from('system_settings')
+            .select('msg_enrollment_whatsapp')
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
         const courseName = record.class_name || "Formação Teológica";
-        const welcomeMessage = `Olá *${record.name}*! 👋 Que alegria receber sua inscrição na **Escola do Reino**! 📖\n\nSua pré-matrícula para o curso *${courseName}* foi realizada com sucesso. Percebemos que você está na fase de pagamento. ✅\n\n*O que acontece agora?*\nAssim que o pagamento for confirmado pelo sistema, eu enviarei por aqui mesmo (e por e-mail) seus dados de acesso exclusivos ao nosso Portal do Aluno.\n\nSeja muito bem-vindo(a) à nossa jornada de formação teológica! Deus abençoe seu chamado. 🙏`;
+        const firstName = record.name ? record.name.split(' ')[0] : "Aluno";
+        let welcomeMessage = settings?.msg_enrollment_whatsapp || `Olá *{nome}*! 👋 Que alegria receber sua inscrição na **Escola do Reino**! 📖\n\nSua pré-matrícula para o curso *{curso}* foi realizada com sucesso. Percebemos que você está na fase de pagamento. ✅\n\n*O que acontece agora?*\nAssim que o pagamento for confirmado pelo sistema, eu enviarei por aqui mesmo (e por e-mail) seus dados de acesso exclusivos ao nosso Portal do Aluno.\n\nSeja muito bem-vindo(a) à nossa jornada de formação teológica! Deus abençoe seu chamado. 🙏`;
+
+        // Replace variables
+        welcomeMessage = welcomeMessage
+            .replace(/{nome}/g, firstName)
+            .replace(/{curso}/g, courseName);
 
         const zaUrl = `https://api.z-api.io/instances/${instanceId}/token/${instanceToken}/send-text`;
         const zaHeaders: Record<string, string> = { "Content-Type": "application/json" };

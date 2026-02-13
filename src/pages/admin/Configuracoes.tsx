@@ -13,6 +13,8 @@ import {
   MessageCircle,
   Book,
   Clock,
+  FlaskConical,
+  Send,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -83,6 +85,74 @@ export default function AdminConfiguracoes() {
     setFormData((prev) => ({ ...prev, [id]: value }));
   }, []);
 
+  const handleTestMessage = async (type: 'whatsapp' | 'email', field: keyof SystemSettings) => {
+    // Get text from formData or from placeholder as fallback
+    let template = (formData[field] as string) || "";
+
+    // If empty, try to get from placeholder directly (since placeholders are professional models now)
+    if (!template) {
+      const element = document.getElementById(field) as HTMLTextAreaElement;
+      if (element) template = element.placeholder;
+    }
+
+    const testData = {
+      nome: "João da Silva (Teste)",
+      curso: "Curso de Teologia (Exemplo)",
+      email: formData.contact_email || "aluno.teste@email.com",
+      senha: "escola-senha-123"
+    };
+
+    const firstName = testData.nome.split(' ')[0];
+
+    const processedMessage = template
+      .replace(/{nome}/g, firstName)
+      .replace(/{curso}/g, testData.curso)
+      .replace(/{email}/g, testData.email)
+      .replace(/{senha}/g, testData.senha);
+
+    if (type === 'whatsapp') {
+      const targetPhone = formData.contact_phone || "";
+      if (!targetPhone) {
+        toast({
+          title: "WhatsApp não configurado",
+          description: "Defina um WhatsApp de contato na aba 'Escola' para receber o teste.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      toast({ title: "Enviando teste...", description: `WhatsApp para ${targetPhone}` });
+      try {
+        await settingsService.sendWhatsApp(targetPhone, processedMessage);
+        toast({ title: "Enviado!", description: "Verifique seu WhatsApp." });
+      } catch (e: any) {
+        toast({ title: "Falha no envio", description: e.message, variant: "destructive" });
+      }
+    } else {
+      const targetEmail = formData.contact_email || "";
+      if (!targetEmail) {
+        toast({
+          title: "E-mail não configurado",
+          description: "Defina um e-mail de contato na aba 'Escola' para receber o teste.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      toast({ title: "Enviando teste...", description: `E-mail para ${targetEmail}` });
+      try {
+        await settingsService.sendEmail(
+          targetEmail,
+          "Teste de Mensagem: " + field,
+          processedMessage
+        );
+        toast({ title: "Enviado!", description: "Verifique sua caixa de entrada." });
+      } catch (e: any) {
+        toast({ title: "Falha no envio", description: e.message, variant: "destructive" });
+      }
+    }
+  };
+
   const isLoading = isFetching || mutation.isPending;
 
   if (isFetching && !formData.school_name) {
@@ -131,7 +201,7 @@ export default function AdminConfiguracoes() {
     <AdminLayout title="Configurações" description="Configurações gerais do sistema">
       <div className="space-y-6">
         <Tabs defaultValue="escola" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:grid-cols-6">
+          <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:grid-cols-7">
             <TabsTrigger value="escola" className="gap-2">
               <School className="h-4 w-4" />
               <span className="hidden sm:inline">Escola</span>
@@ -146,6 +216,10 @@ export default function AdminConfiguracoes() {
                 <span className="hidden sm:inline">Pagamentos</span>
               </TabsTrigger>
             )}
+            <TabsTrigger value="mensagens" className="gap-2">
+              <MessageCircle className="h-4 w-4" />
+              <span className="hidden sm:inline">Central de Mensagens</span>
+            </TabsTrigger>
             <TabsTrigger value="notificacoes" className="gap-2">
               <Bell className="h-4 w-4" />
               <span className="hidden sm:inline">Notificações</span>
@@ -632,24 +706,6 @@ export default function AdminConfiguracoes() {
                     />
                   </div>
 
-                  <div className="space-y-4 pt-4 border-t">
-                    <h4 className="font-semibold text-sm flex items-center gap-2">
-                      <MessageCircle className="h-4 w-4" /> WhatsApp
-                    </h4>
-                    <div className="space-y-2">
-                      <Label htmlFor="whatsapp_welcome_message">Mensagem de Boas-Vindas (Ao matricular)</Label>
-                      <Textarea
-                        id="whatsapp_welcome_message"
-                        value={formData.whatsapp_welcome_message || ""}
-                        onChange={(e) => handleChange("whatsapp_welcome_message", e.target.value)}
-                        placeholder="Olá {nome}, bem-vindo à Escola do Reino!"
-                        rows={3}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Use <strong>{'{nome}'}</strong> para inserir o nome do aluno automaticamente.
-                      </p>
-                    </div>
-                  </div>
                 </CardContent>
 
               </Card>
@@ -786,6 +842,45 @@ export default function AdminConfiguracoes() {
                       />
                     </div>
 
+                    <div className="space-y-4 pt-6 border-t border-border mt-6">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <h4 className="text-sm font-medium">Integração Resend (Recomendado)</h4>
+                          <p className="text-xs text-muted-foreground">Substitui o SMTP do Gmail para evitar bloqueios. Crie sua conta em <a href="https://resend.com" target="_blank" className="text-primary hover:underline">resend.com</a>.</p>
+                        </div>
+                        <div className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs px-2 py-1 rounded font-bold">Melhor Opção</div>
+                      </div>
+
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="resend_api_key">API Key (Resend)</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="resend_api_key"
+                              type="password"
+                              placeholder="re_12345678..."
+                              value={formData.resend_api_key || ""}
+                              onChange={(e) => handleChange("resend_api_key", e.target.value)}
+                            />
+                            <Button variant="outline" size="icon" title="Gerenciar Chaves" onClick={() => window.open('https://resend.com/api-keys', '_blank')}>
+                              <Key className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">Copie a chave criada no painel do Resend.</p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="resend_from_email">E-mail de Envio (Resend)</Label>
+                          <Input
+                            id="resend_from_email"
+                            placeholder="onboarding@resend.dev"
+                            value={formData.resend_from_email || ""}
+                            onChange={(e) => handleChange("resend_from_email", e.target.value)}
+                          />
+                          <p className="text-[10px] text-muted-foreground">Use 'onboarding@resend.dev' para testes (apenas para seu e-mail) ou verifique seu domínio no Resend.</p>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="flex justify-end pt-4 border-t">
                       <Button
                         variant="secondary"
@@ -796,10 +891,18 @@ export default function AdminConfiguracoes() {
                           }
                           toast({ title: "Enviando...", description: "Testando envio para " + formData.contact_email });
                           try {
-                            await settingsService.sendTestEmail(formData.contact_email);
-                            toast({ title: "Sucesso!", description: "E-mail enviado. Verifique sua caixa de entrada.", variant: "default" });
-                          } catch (e) {
-                            toast({ title: "Erro", description: "Falha ao enviar. Verifique as credenciais.", variant: "destructive" });
+                            const result = await settingsService.sendTestEmail(formData.contact_email);
+                            toast({
+                              title: "Sucesso!",
+                              description: `E-mail enviado via ${result.method || 'sistema'}. Verifique sua caixa de entrada.`,
+                              variant: "default"
+                            });
+                          } catch (e: any) {
+                            toast({
+                              title: "Erro no Envio",
+                              description: e.message || "Falha ao enviar. Verifique as credenciais.",
+                              variant: "destructive"
+                            });
                           }
                         }}
                         className="gap-2"
@@ -815,6 +918,181 @@ export default function AdminConfiguracoes() {
               </motion.div>
             </TabsContent>
           )}
+
+          <TabsContent value="mensagens">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <Card className="shadow-soft">
+                <CardHeader>
+                  <CardTitle className="font-display flex items-center gap-2">
+                    <MessageCircle className="h-5 w-5 text-primary" />
+                    Central de Mensagens Automatizadas
+                  </CardTitle>
+                  <CardDescription>
+                    Personalize os textos enviados via WhatsApp e E-mail em cada etapa.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-8">
+
+                  {/* Etapa 1: Matrícula */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 pb-2 border-b">
+                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">1</div>
+                      <h4 className="font-bold text-base">Boas-vindas (Pós-Inscrição)</h4>
+                    </div>
+                    <div className="grid gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="msg_enrollment_whatsapp" className="flex items-center gap-2">
+                          <MessageCircle className="h-3.5 w-3.5" /> WhatsApp de Boas-vindas
+                        </Label>
+                        <Textarea
+                          id="msg_enrollment_whatsapp"
+                          value={formData.msg_enrollment_whatsapp || ""}
+                          onChange={(e) => handleChange("msg_enrollment_whatsapp", e.target.value)}
+                          rows={6}
+                          placeholder="Olá *{nome}*! 👋 Que alegria receber sua inscrição na **Escola do Reino**!\n\nSua pré-matrícula para o curso *{curso}* foi realizada com sucesso. Percebemos que você está na fase de pagamento. ✅\n\n*O que acontece agora?*\nAssim que o pagamento for confirmado pelo sistema, eu enviarei por aqui mesmo (e por e-mail) seus dados de acesso exclusivos ao nosso Portal do Aluno.\n\nSeja muito bem-vindo(a) à nossa jornada de formação teológica! Deus abençoe seu chamado. 🙏"
+                        />
+                        <div className="flex items-center justify-between gap-2 pt-1">
+                          <div className="flex flex-wrap gap-2">
+                            <span className="text-[10px] bg-muted px-2 py-1 rounded-md text-muted-foreground font-mono">{"{nome}"}</span>
+                            <span className="text-[10px] bg-muted px-2 py-1 rounded-md text-muted-foreground font-mono">{"{curso}"}</span>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 gap-1.5 text-[10px]"
+                            onClick={() => handleTestMessage('whatsapp', 'msg_enrollment_whatsapp')}
+                          >
+                            <FlaskConical className="h-3 w-3 text-amber-500" /> Testar no meu WhatsApp
+                          </Button>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">Enviado assim que o aluno confirma os dados no formulário.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Etapa 2: Pagamento Confirmado */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 pb-2 border-b">
+                      <div className="h-8 w-8 rounded-full bg-green-500/10 flex items-center justify-center text-green-600 font-bold text-sm">2</div>
+                      <h4 className="font-bold text-base">Confirmação de Pagamento & Acesso</h4>
+                    </div>
+
+                    <div className="grid gap-8">
+                      {/* Novos Alunos */}
+                      <div className="space-y-4 p-4 rounded-xl bg-muted/30 border border-border/50">
+                        <div className="flex items-center justify-between gap-2">
+                          <h5 className="text-sm font-bold flex items-center gap-2">
+                            <Users className="h-4 w-4 text-blue-500" /> Para NOVOS Alunos (Primeiro acesso)
+                          </h5>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 gap-1 text-[10px] hover:bg-green-500/10 hover:text-green-600"
+                              onClick={() => handleTestMessage('whatsapp', 'msg_payment_confirmed_whatsapp_new')}
+                            >
+                              <MessageCircle className="h-3 w-3" /> Testar Zap
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 gap-1 text-[10px] hover:bg-blue-500/10 hover:text-blue-600"
+                              onClick={() => handleTestMessage('email', 'msg_payment_confirmed_email_new')}
+                            >
+                              <Mail className="h-3 w-3" /> Testar E-mail
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="msg_payment_confirmed_whatsapp_new">WhatsApp (Com Senha)</Label>
+                          <Textarea
+                            id="msg_payment_confirmed_whatsapp_new"
+                            value={formData.msg_payment_confirmed_whatsapp_new || ""}
+                            onChange={(e) => handleChange("msg_payment_confirmed_whatsapp_new", e.target.value)}
+                            rows={4}
+                            placeholder="Olá *{nome}*! 👋 Sua matrícula na *Escola do Reino* foi aprovada! ✅\n\nAqui estão seus dados de acesso ao portal:\n\n📧 *Login:* {email}\n🔑 *Senha:* {senha}\n\n🔗 Acesse em: https://escoladoreino.site/login"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="msg_payment_confirmed_email_new">Template de E-mail (HTML)</Label>
+                          <Textarea
+                            id="msg_payment_confirmed_email_new"
+                            value={formData.msg_payment_confirmed_email_new || ""}
+                            onChange={(e) => handleChange("msg_payment_confirmed_email_new", e.target.value)}
+                            rows={4}
+                            className="font-mono text-xs"
+                            placeholder="<h1>Credenciais de Acesso</h1><p>Olá <strong>{nome}</strong>,</p><p>Sua matrícula foi aprovada. Use o e-mail <strong>{email}</strong> e a senha <strong>{senha}</strong> para acessar.</p>"
+                          />
+                        </div>
+                        <div className="flex flex-wrap gap-2 pt-1 border-t border-border/30 mt-2">
+                          <span className="text-[10px] bg-background px-2 py-1 rounded-md text-muted-foreground font-mono">{"{nome}"}</span>
+                          <span className="text-[10px] bg-background px-2 py-1 rounded-md text-muted-foreground font-mono">{"{email}"}</span>
+                          <span className="text-[10px] bg-background px-2 py-1 rounded-md text-muted-foreground font-mono">{"{senha}"}</span>
+                        </div>
+                      </div>
+
+                      {/* Alunos Antigos */}
+                      <div className="space-y-4 p-4 rounded-xl bg-muted/30 border border-border/50">
+                        <div className="flex items-center justify-between gap-2">
+                          <h5 className="text-sm font-bold flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-amber-500" /> Para Alunos ANTIGOS (Já cadastrados)
+                          </h5>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 gap-1 text-[10px] hover:bg-green-500/10 hover:text-green-600"
+                              onClick={() => handleTestMessage('whatsapp', 'msg_payment_confirmed_whatsapp_returning')}
+                            >
+                              <MessageCircle className="h-3 w-3" /> Testar Zap
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 gap-1 text-[10px] hover:bg-blue-500/10 hover:text-blue-600"
+                              onClick={() => handleTestMessage('email', 'msg_payment_confirmed_email_returning')}
+                            >
+                              <Mail className="h-3 w-3" /> Testar E-mail
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="msg_payment_confirmed_whatsapp_returning">WhatsApp (Sem Senha)</Label>
+                          <Textarea
+                            id="msg_payment_confirmed_whatsapp_returning"
+                            value={formData.msg_payment_confirmed_whatsapp_returning || ""}
+                            onChange={(e) => handleChange("msg_payment_confirmed_whatsapp_returning", e.target.value)}
+                            rows={4}
+                            placeholder="Olá *{nome}*! 👋 Que alegria ter você conosco em mais uma jornada! ✅\n\nSua nova matrícula na **Escola do Reino** já está ativa e o conteúdo liberado. 📖\n\nComo você já é nosso aluno, seus dados de acesso permanecem os mesmos. Basta entrar com seu e-mail e a senha que você já utiliza habitualmente.\n\n🔗 *Acesse agora o Portal:* https://escoladoreino.site/login\n\nBons estudos e que Deus abençoe seu chamado! 🙏"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="msg_payment_confirmed_email_returning">Template de E-mail (HTML)</Label>
+                          <Textarea
+                            id="msg_payment_confirmed_email_returning"
+                            value={formData.msg_payment_confirmed_email_returning || ""}
+                            onChange={(e) => handleChange("msg_payment_confirmed_email_returning", e.target.value)}
+                            rows={4}
+                            className="font-mono text-xs"
+                            placeholder="<div style='font-family: sans-serif; line-height: 1.6; color: #333;'><h1 style='color: #7c3aed;'>Plataforma Liberada! 🎓</h1><p>Olá <strong>{nome}</strong>, tudo bem?</p><p>É uma alegria ter você conosco em mais um curso da <strong>Escola do Reino</strong>! Sua matrícula foi confirmada e o novo conteúdo já está disponível no seu painel.</p><p>Basta entrar no portal com seu e-mail e a senha que você já cadastrou anteriormente.</p><p style='text-align: center;'><a href='https://escoladoreino.site/login' style='background-color: #7c3aed; color: white; padding: 12px 25px; text-decoration: none; border-radius: 6px;'>ACESSAR MEU PORTAL</a></p></div>"
+                          />
+                        </div>
+                        <div className="flex flex-wrap gap-2 pt-1 border-t border-border/30 mt-2">
+                          <span className="text-[10px] bg-background px-2 py-1 rounded-md text-muted-foreground font-mono">{"{nome}"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </CardContent>
+              </Card>
+            </motion.div>
+          </TabsContent>
 
         </Tabs>
 

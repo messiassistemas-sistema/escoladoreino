@@ -46,6 +46,7 @@ export function UsersManagement() {
     const [newUser, setNewUser] = useState({
         fullName: "",
         email: "",
+        phone: "",
         role: "teacher"
     });
 
@@ -61,12 +62,34 @@ export function UsersManagement() {
 
     // Edit User State
     const [isEditUserOpen, setIsEditUserOpen] = useState(false);
-    const [editUserData, setEditUserData] = useState({ fullName: "", role: "" });
+    const [editUserData, setEditUserData] = useState({ fullName: "", role: "", phone: "" });
 
     const { data: users = [], isLoading } = useQuery({
         queryKey: ["admin-users"],
         queryFn: settingsService.getUsers
     });
+
+    const triggerAutoWhatsApp = async (name: string, email: string, password: string, phone?: string) => {
+        if (!phone) {
+            console.warn("No phone number for automatic WhatsApp sending");
+            return;
+        }
+
+        try {
+            const text = `Olá ${name}, segue seu acesso ao sistema Escola do Reino:\n\n*Login:* ${email}\n*Senha:* ${password}\n\nAcesse em: https://escoladoreino.site`;
+
+            toast({ title: "WhatsApp", description: "Enviando credenciais automaticamente..." });
+            await settingsService.sendWhatsApp(phone, text);
+            toast({ title: "WhatsApp Enviado!", description: "As credenciais foram enviadas com sucesso." });
+        } catch (error: any) {
+            console.error("Error sending automatic WhatsApp:", error);
+            toast({
+                title: "Aviso",
+                description: "Não foi possível enviar o WhatsApp automático. Tente manualmente no botão abaixo.",
+                variant: "destructive"
+            });
+        }
+    };
 
     const createMutation = useMutation({
         mutationFn: (data: any) => settingsService.createUser(data),
@@ -82,8 +105,13 @@ export function UsersManagement() {
             });
             setCredentialModalOpen(true);
 
-            setNewUser({ fullName: "", email: "", role: "teacher" });
+            setNewUser({ fullName: "", email: "", phone: "", role: "teacher" });
             toast({ title: "Usuário criado!", description: "Credenciais geradas com sucesso." });
+
+            // Trigger Automatic WhatsApp
+            if (newUser.phone) {
+                triggerAutoWhatsApp(newUser.fullName, newUser.email, response.password, newUser.phone);
+            }
         },
         onError: (error: Error) => {
             toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -91,7 +119,7 @@ export function UsersManagement() {
     });
 
     const resetPasswordMutation = useMutation({
-        mutationFn: (user: { id: string, email: string, full_name: string }) => settingsService.resetUserPassword(user.id, user.email),
+        mutationFn: (user: { id: string, email: string, full_name: string, phone?: string }) => settingsService.resetUserPassword(user.id, user.email),
         onSuccess: (response: { password: string }, variables) => {
             setActiveCredentials({
                 email: variables.email,
@@ -102,6 +130,11 @@ export function UsersManagement() {
             toast({ title: "Senha redefinida!", description: "Nova senha gerada com sucesso." });
             setManualPasswordOpen(false);
             setManualPassword("");
+
+            // Trigger Automatic WhatsApp
+            if (variables.phone) {
+                triggerAutoWhatsApp(variables.full_name, variables.email, response.password, variables.phone);
+            }
         },
         onError: (error: Error) => {
             toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -120,21 +153,36 @@ export function UsersManagement() {
             setManualPasswordOpen(false);
             setManualPassword("");
             toast({ title: "Sucesso", description: "Senha definida manualmente." });
+
+            // Trigger Automatic WhatsApp
+            if (variables.user.phone) {
+                triggerAutoWhatsApp(variables.user.full_name, variables.user.email, response.password, variables.user.phone);
+            }
         },
         onError: (error: Error) => {
             toast({ title: "Erro", description: error.message, variant: "destructive" });
         }
     });
 
-    const handleManualPasswordSubmit = () => {
+    const handleManualPasswordSubmit = async () => {
         if (!selectedUserForPassword || !manualPassword) return;
 
         if (isResendingOnly) {
-            // Apenas abre o WhatsApp com a senha digitada, sem salvar no banco
-            const text = `Olá ${selectedUserForPassword.full_name}, segue seu acesso ao sistema Escola do Reino:\n\n*Login:* ${selectedUserForPassword.email}\n*Senha:* ${manualPassword}\n\nAcesse em: https://escoladoreino.site`;
-            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-            setManualPasswordOpen(false);
-            setManualPassword("");
+            try {
+                const text = `Olá ${selectedUserForPassword.full_name}, segue seu acesso ao sistema Escola do Reino:\n\n*Login:* ${selectedUserForPassword.email}\n*Senha:* ${manualPassword}\n\nAcesse em: https://escoladoreino.site`;
+
+                if (selectedUserForPassword.phone) {
+                    await settingsService.sendWhatsApp(selectedUserForPassword.phone, text);
+                    toast({ title: "Enviado!", description: "Credenciais enviadas via WhatsApp." });
+                } else {
+                    // Fallback to link if no phone saved
+                    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                }
+                setManualPasswordOpen(false);
+                setManualPassword("");
+            } catch (error: any) {
+                toast({ title: "Erro ao enviar", description: error.message, variant: "destructive" });
+            }
             return;
         }
 
@@ -165,8 +213,8 @@ export function UsersManagement() {
     });
 
     const editUserMutation = useMutation({
-        mutationFn: async (data: { userId: string; fullName: string; role: string }) => {
-            await settingsService.updateUser(data.userId, { fullName: data.fullName, role: data.role });
+        mutationFn: async (data: { userId: string; fullName: string; role: string; phone?: string }) => {
+            await settingsService.updateUser(data.userId, data.fullName, data.role, data.phone);
         },
         onSuccess: () => {
             toast({
@@ -190,7 +238,8 @@ export function UsersManagement() {
         editUserMutation.mutate({
             userId: selectedUserForPassword.id,
             fullName: editUserData.fullName,
-            role: editUserData.role
+            role: editUserData.role,
+            phone: editUserData.phone
         });
     };
 
@@ -205,10 +254,29 @@ export function UsersManagement() {
         toast({ title: "Copiado!", description: "Texto copiado para a área de transferência." });
     };
 
-    const sendToWhatsapp = () => {
+    const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
+    const sendToWhatsapp = async () => {
         if (!activeCredentials) return;
-        const text = `Olá ${activeCredentials.name}, segue seu acesso ao sistema Escola do Reino:\n\n*Login:* ${activeCredentials.email}\n*Senha:* ${activeCredentials.password}\n\nAcesse em: https://escoladoreino.site`;
-        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+
+        setIsSendingWhatsApp(true);
+        try {
+            const text = `Olá ${activeCredentials.name}, segue seu acesso ao sistema Escola do Reino:\n\n*Login:* ${activeCredentials.email}\n*Senha:* ${activeCredentials.password}\n\nAcesse em: https://escoladoreino.site`;
+
+            // Look for the user in the list to get their phone
+            const user = users.find(u => u.email === activeCredentials.email);
+
+            if (user?.phone) {
+                await settingsService.sendWhatsApp(user.phone, text);
+                toast({ title: "Enviado!", description: "Mensagem enviada com sucesso." });
+            } else {
+                // Fallback to link if phone not found
+                window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+            }
+        } catch (error: any) {
+            toast({ title: "Erro ao enviar", description: error.message, variant: "destructive" });
+        } finally {
+            setIsSendingWhatsApp(false);
+        }
     };
 
     return (
@@ -233,11 +301,19 @@ export function UsersManagement() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>E-mail</Label>
+                                <Label>E-mail (Login)</Label>
                                 <Input
                                     type="email"
                                     value={newUser.email}
                                     onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>WhatsApp (Opcional)</Label>
+                                <Input
+                                    placeholder="(00) 00000-0000"
+                                    value={newUser.phone}
+                                    onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })}
                                 />
                             </div>
                             <div className="space-y-2">
@@ -304,7 +380,11 @@ export function UsersManagement() {
                                                         className="hover:bg-blue-50 text-blue-600 hover:text-blue-700"
                                                         onClick={() => {
                                                             setSelectedUserForPassword(user);
-                                                            setEditUserData({ fullName: user.full_name, role: user.role });
+                                                            setEditUserData({
+                                                                fullName: user.full_name || "",
+                                                                role: user.role || "teacher",
+                                                                phone: user.phone || ""
+                                                            });
                                                             setIsEditUserOpen(true);
                                                         }}
                                                     >
@@ -428,21 +508,12 @@ export function UsersManagement() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>Cargo</Label>
-                            <Select
-                                value={editUserData.role}
-                                onValueChange={(value) => setEditUserData({ ...editUserData, role: value })}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="admin">Administrador</SelectItem>
-                                    <SelectItem value="secretary">Secretário(a)</SelectItem>
-                                    <SelectItem value="treasurer">Tesoureiro(a)</SelectItem>
-                                    <SelectItem value="teacher">Professor(a)</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <Label>WhatsApp</Label>
+                            <Input
+                                value={editUserData.phone}
+                                onChange={(e) => setEditUserData({ ...editUserData, phone: e.target.value })}
+                                placeholder="(00) 00000-0000"
+                            />
                         </div>
                     </div>
                     <DialogFooter>
@@ -529,9 +600,14 @@ export function UsersManagement() {
                             <Button
                                 className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white"
                                 onClick={sendToWhatsapp}
+                                disabled={isSendingWhatsApp}
                             >
-                                <MessageCircle className="h-4 w-4" />
-                                Enviar no WhatsApp
+                                {isSendingWhatsApp ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <MessageCircle className="h-4 w-4" />
+                                )}
+                                {isSendingWhatsApp ? "Enviando..." : "Enviar no WhatsApp"}
                             </Button>
                         </div>
                     )}

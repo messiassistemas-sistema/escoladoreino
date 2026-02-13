@@ -77,7 +77,34 @@ export default function AdminAlunos() {
   const [detailsStudent, setDetailsStudent] = useState<Student | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+  const [sendingWhatsAppId, setSendingWhatsAppId] = useState<string | null>(null);
 
+  const handleSendWhatsApp = async (aluno: Student, customMessage?: string) => {
+    if (!aluno.phone) {
+      toast({ title: "Erro", description: "Aluno sem telefone cadastrado.", variant: "destructive" });
+      return;
+    }
+
+    setSendingWhatsAppId(aluno.id);
+    try {
+      const firstName = aluno.name.split(" ")[0];
+      const message = customMessage || `Olá *${firstName}*! 👋\n\nSegue seu acesso ao Portal do Aluno:\n\n📧 *Login:* ${aluno.email}\n🔗 *Link:* ${window.location.origin}/login\n\n_Sua senha continua a mesma. Caso tenha esquecido, utilize a opção "Esqueci minha senha" no site._`;
+
+      toast({ title: "WhatsApp", description: "Enviando acesso..." });
+      const { settingsService } = await import("@/services/settingsService");
+      await settingsService.sendWhatsApp(aluno.phone, message);
+      toast({ title: "Sucesso!", description: "Acesso enviado via WhatsApp." });
+    } catch (error: any) {
+      console.error("Error sending WhatsApp:", error);
+      toast({
+        title: "Erro no envio",
+        description: "Não foi possível enviar via API. Tente novamente mais tarde.",
+        variant: "destructive"
+      });
+    } finally {
+      setSendingWhatsAppId(null);
+    }
+  };
   const { data: alunos = [], isLoading } = useQuery({
     queryKey: ["students"],
     queryFn: studentsService.getStudents,
@@ -517,13 +544,17 @@ export default function AdminAlunos() {
 
                       <Button
                         className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white gap-2"
+                        disabled={sendingWhatsAppId === detailsStudent.id}
                         onClick={() => {
                           const message = `Olá *${detailsStudent.name}*! 👋\n\nAqui estão seus dados de acesso ao Portal do Aluno da Escola do Reino:\n\n📧 *Login:* ${detailsStudent.email}\n🔑 *Senha:* ${generatedPassword}\n\n🔗 *Acesse em:* ${window.location.origin}/login\n\nQualquer dúvida, estamos à disposição!`;
-                          const whatsappUrl = `https://wa.me/55${detailsStudent.phone?.replace(/\D/g, "")}?text=${encodeURIComponent(message)}`;
-                          window.open(whatsappUrl, '_blank');
+                          handleSendWhatsApp(detailsStudent, message);
                         }}
                       >
-                        <MessageCircle className="h-4 w-4" />
+                        {sendingWhatsAppId === detailsStudent.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <MessageCircle className="h-4 w-4" />
+                        )}
                         Enviar Login e Senha no WhatsApp
                       </Button>
 
@@ -646,18 +677,14 @@ export default function AdminAlunos() {
                             size="icon"
                             className="text-green-600 hover:text-green-700 hover:bg-green-50"
                             title="Enviar Acesso (WhatsApp)"
-                            onClick={() => {
-                              if (!aluno.phone) {
-                                toast({ title: "Erro", description: "Aluno sem telefone cadastrado.", variant: "destructive" });
-                                return;
-                              }
-                              const firstName = aluno.name.split(" ")[0];
-                              const message = `Olá *${firstName}*! 👋\n\nSegue seu acesso ao Portal do Aluno:\n\n📧 *Login:* ${aluno.email}\n🔗 *Link:* ${window.location.origin}/login\n\n_Sua senha continua a mesma. Caso tenha esquecido, utilize a opção "Esqueci minha senha" no site._`;
-                              const whatsappUrl = `https://wa.me/55${aluno.phone.replace(/\D/g, "")}?text=${encodeURIComponent(message)}`;
-                              window.open(whatsappUrl, '_blank');
-                            }}
+                            disabled={sendingWhatsAppId === aluno.id}
+                            onClick={() => handleSendWhatsApp(aluno)}
                           >
-                            <MessageCircle className="h-4 w-4" />
+                            {sendingWhatsAppId === aluno.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <MessageCircle className="h-4 w-4" />
+                            )}
                           </Button>
 
                           <DropdownMenu>

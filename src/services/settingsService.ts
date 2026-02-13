@@ -28,6 +28,8 @@ export interface SystemSettings {
     smtp_user: string | null;
     smtp_pass: string | null;
     sender_name: string | null;
+    resend_api_key: string | null;
+    resend_from_email: string | null;
     logo_url: string | null;
     whatsapp_welcome_message: string | null;
     absences_alert_threshold: number;
@@ -38,6 +40,11 @@ export interface SystemSettings {
     attendance_msg_daily_late: string;
     attendance_msg_alert: string;
     attendance_msg_fail: string;
+    msg_enrollment_whatsapp: string | null;
+    msg_payment_confirmed_whatsapp_new: string | null;
+    msg_payment_confirmed_whatsapp_returning: string | null;
+    msg_payment_confirmed_email_new: string | null;
+    msg_payment_confirmed_email_returning: string | null;
     updated_at: string;
 }
 
@@ -47,6 +54,7 @@ export interface UserProfile {
     email: string;
     full_name: string;
     role: 'admin' | 'secretary' | 'teacher' | 'treasurer' | 'student';
+    phone?: string;
     created_at: string;
 }
 
@@ -106,6 +114,11 @@ export const settingsService = {
                 attendance_msg_daily_late: "Oi {nome}! 📚 Sentimos sua falta hoje. A aula começou às {horario}. Está tudo bem?",
                 attendance_msg_alert: "Oi {nome}! Você tem {faltas} faltas em {disciplina}. Precisa de assiduidade para ser aprovado!",
                 attendance_msg_fail: "⚠️ ALERTA CRÍTICO: {nome} atingiu {faltas} faltas na disciplina {disciplina} e está REPROVADO.",
+                msg_enrollment_whatsapp: "Olá *{nome}*! 👋 Que alegria receber sua inscrição na **Escola do Reino**! Sua pré-matrícula para o curso *{curso}* foi realizada com sucesso.",
+                msg_payment_confirmed_whatsapp_new: "Olá *{nome}*! 👋 Sua matrícula na *Escola do Reino* foi aprovada! 📧 Login: {email} 🔑 Senha: {senha}",
+                msg_payment_confirmed_whatsapp_returning: "Olá *{nome}*! 👋 Que alegria ter você conosco em mais uma jornada! ✅\n\nSua nova matrícula na **Escola do Reino** já está ativa e o conteúdo liberado. 📖\n\nComo você já é nosso aluno, seus dados de acesso permanecem os mesmos. Basta entrar com seu e-mail e a senha que você já utiliza habitualmente.\n\n🔗 *Acesse agora o Portal:* https://escoladoreino.site/login\n\nBons estudos e que Deus abençoe seu chamado! 🙏",
+                msg_payment_confirmed_email_new: "<h1>Credenciais de Acesso - Escola do Reino</h1><p>Olá <strong>{nome}</strong>,</p><p>Sua matrícula foi aprovada com sucesso! Aqui estão seus dados de acesso:</p><ul><li><strong>Login:</strong> {email}</li><li><strong>Senha:</strong> {senha}</li></ul><p>Recomendamos que altere sua senha após o primeiro acesso.</p><p>Acesse o portal aqui: <a href='https://escoladoreino.site/login'>Portal do Aluno</a></p>",
+                msg_payment_confirmed_email_returning: "<div style='font-family: sans-serif; line-height: 1.6; color: #333;'><h1 style='color: #7c3aed;'>Plataforma Liberada! 🎓</h1><p>Olá <strong>{nome}</strong>, tudo bem?</p><p>É uma alegria ter você conosco em mais um curso da <strong>Escola do Reino</strong>! Sua matrícula foi confirmada e o novo conteúdo já está disponível no seu painel.</p><p>Basta entrar no portal com seu e-mail e a senha que você já cadastrou anteriormente.</p><p style='text-align: center; margin: 30px 0;'><a href='https://escoladoreino.site/login' style='background-color: #7c3aed; color: white; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-weight: bold;'>ACESSAR MEU PORTAL</a></p></div>",
                 updated_at: new Date().toISOString()
             } as SystemSettings;
         }
@@ -188,7 +201,7 @@ export const settingsService = {
         return data as UserProfile[];
     },
 
-    async createUser(user: { email: string; fullName: string; role: string }): Promise<{ password: string }> {
+    async createUser(user: { email: string; fullName: string; role: string; phone?: string }): Promise<{ password: string }> {
         // Generate a random temp password
         const tempPassword = Math.random().toString(36).slice(-8) + "A1!";
 
@@ -255,7 +268,7 @@ export const settingsService = {
     },
 
     // ... existing email methods ...
-    async sendEmail(to: string, subject: string, html: string): Promise<void> {
+    async sendEmail(to: string, subject: string, html: string): Promise<{ success: boolean; method?: string; error?: string }> {
         const { data, error } = await supabase.functions.invoke("send-email", {
             body: { to, subject, html }
         });
@@ -265,12 +278,29 @@ export const settingsService = {
             throw new Error(`Erro de conexão: ${error.message}`);
         }
 
-        if (data && data.error) {
-            throw new Error(data.error);
+        if (data && data.success === false) {
+            throw new Error(data.error || "Erro ao enviar e-mail");
+        }
+
+        return data;
+    },
+
+    async sendWhatsApp(phone: string, message: string): Promise<void> {
+        const { data, error } = await supabase.functions.invoke("send-whatsapp", {
+            body: { phone, message }
+        });
+
+        if (error) {
+            console.error("Functions invoke error:", error);
+            throw new Error(`Erro de conexão: ${error.message}`);
+        }
+
+        if (data && data.success === false) {
+            throw new Error(data.error || "Erro ao enviar WhatsApp");
         }
     },
 
-    async sendTestEmail(to: string): Promise<void> {
+    async sendTestEmail(to: string): Promise<{ success: boolean; method?: string; error?: string }> {
         return this.sendEmail(
             to,
             "Teste de Configuração de E-mail - Escola do Reino",
@@ -285,19 +315,16 @@ export const settingsService = {
             `
         );
     },
-    async updateUser(userId: string, data: { fullName: string; role: string }): Promise<void> {
-        // Atualiza metadados do Auth via Edge Function
+    async updateUser(userId: string, fullName: string, role: string, phone?: string): Promise<void> {
         const { error: fnError } = await supabase.functions.invoke("admin-update-user", {
-            body: { userId, ...data }
+            body: { userId, fullName, role, phone }
         });
 
         if (fnError) throw new Error(`Erro na função: ${fnError.message}`);
 
-        // Também atualiza a tabela pública profiles, se necessário (depende da arquitetura de sincronização)
-        // Por via das dúvidas, atualizamos a tabela perfil que é o que a lista exibe
         const { error: dbError } = await supabase
             .from("profiles")
-            .update({ full_name: data.fullName, role: data.role })
+            .update({ full_name: fullName, role: role, phone: phone })
             .eq("id", userId);
 
         if (dbError) throw dbError;

@@ -28,7 +28,7 @@ serve(async (req) => {
             )
         }
 
-        const { email, password, fullName, role } = await req.json()
+        const { email, password, fullName, role, phone } = await req.json()
 
         if (!email || !password || !fullName || !role) {
             return new Response(
@@ -49,19 +49,14 @@ serve(async (req) => {
             email_confirm: true,
             user_metadata: {
                 name: fullName,
-                role: role
+                role: role,
+                phone: phone
             }
         })
 
         if (createError) throw createError
 
         // 2. Create Profile (or update if trigger created it)
-        // Assuming a trigger might create it, but for safety we upsert.
-        // However, if we don't have a trigger for new users -> profiles, we must do it here.
-        // Let's assume we do explicit insert/upsert.
-
-        // Check if profile exists (if trigger ran)
-        // Actually, best to just upsert.
         const { error: profileError } = await supabaseAdmin
             .from('profiles')
             .upsert({
@@ -69,6 +64,7 @@ serve(async (req) => {
                 email: email,
                 full_name: fullName,
                 role: role,
+                phone: phone,
                 updated_at: new Date().toISOString()
             })
 

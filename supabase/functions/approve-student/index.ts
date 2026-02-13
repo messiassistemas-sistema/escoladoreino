@@ -140,53 +140,66 @@ serve(async (req) => {
             }
         }
 
-        // 6. Send Email (Resend)
-        const resendApiKey = Deno.env.get("RESEND_API_KEY");
-        let emailSent = false;
+        const firstName = student.name ? student.name.split(' ')[0] : "Aluno";
 
-        if (resendApiKey) {
-            const emailBody = isNewUser
-                ? `
+        // 6. Fetch custom templates from settings
+        const { data: settings } = await supabaseAdmin
+            .from('system_settings')
+            .select('msg_payment_confirmed_email_new, msg_payment_confirmed_email_returning, msg_payment_confirmed_whatsapp_new, msg_payment_confirmed_whatsapp_returning')
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        // 7. Send Email (via centralized send-email function)
+        let emailSent = false;
+        try {
+            let emailBody = "";
+            let emailSubject = resend ? "Novas Credenciais de Acesso - Escola do Reino" : "Acesso ao Portal do Aluno - Escola do Reino";
+
+            if (isNewUser) {
+                const template = settings?.msg_payment_confirmed_email_new || `
                     <h1>Credenciais de Acesso - Escola do Reino</h1>
-                    <p>Olá <strong>${student.name}</strong>,</p>
-                    <p>${resend ? "Conforme solicitado, aqui estão suas novas credenciais de acesso:" : "Sua matrícula foi aprovada com sucesso! Aqui estão seus dados de acesso:"}</p>
+                    <p>Olá <strong>{nome}</strong>,</p>
+                    <p>Sua matrícula foi aprovada com sucesso! Aqui estão seus dados de acesso:</p>
                     <ul>
-                        <li><strong>Login:</strong> ${student.email}</li>
-                        <li><strong>Senha:</strong> ${tempPassword}</li>
+                        <li><strong>Login:</strong> {email}</li>
+                        <li><strong>Senha:</strong> {senha}</li>
                     </ul>
                     <p>Recomendamos que altere sua senha após o primeiro acesso.</p>
                     <p>Acesse o portal aqui: <a href="https://escoladoreino.site/login">Portal do Aluno</a></p>
-                `
-                : `
+                `;
+                emailBody = template
+                    .replace(/{nome}/g, firstName)
+                    .replace(/{email}/g, student.email)
+                    .replace(/{senha}/g, tempPassword);
+            } else {
+                const template = settings?.msg_payment_confirmed_email_returning || `
                     <h1>Acesso ao Portal do Aluno</h1>
-                    <p>Olá <strong>${student.name}</strong>,</p>
+                    <p>Olá <strong>{nome}</strong>,</p>
                     <p>Sua matrícula está ativa.</p>
                     <p>Você já possui um cadastro. Acesse o portal com seu email e senha habituais.</p>
-                    <p>Se esqueceu sua senha, utilize a opção "Esqueci minha senha" na tela de login.</p>
                     <p>Acesse aqui: <a href="https://escoladoreino.site/login">Portal do Aluno</a></p>
                 `;
+                emailBody = template
+                    .replace(/{nome}/g, firstName);
+            }
 
-            const res = await fetch("https://api.resend.com/emails", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${resendApiKey}`,
-                },
-                body: JSON.stringify({
-                    from: "Escola do Reino <nao-responda@escoladoreino.site>",
-                    to: [student.email],
-                    subject: resend ? "Novas Credenciais de Acesso - Escola do Reino" : "Acesso ao Portal do Aluno - Escola do Reino",
-                    html: emailBody,
-                }),
+            console.log(`Invoking send-email function for ${student.email}...`);
+            const { data: sendEmailResult, error: sendEmailError } = await supabaseAdmin.functions.invoke("send-email", {
+                body: { to: student.email, subject: emailSubject, html: emailBody }
             });
-            const emailResult = await res.json();
-            console.log("Email sent result:", emailResult);
-            if (res.ok) emailSent = true;
-        } else {
-            console.log("RESEND_API_KEY not set, skipping email.");
+
+            if (sendEmailError || (sendEmailResult && sendEmailResult.success === false)) {
+                console.error("Failed to send email via send-email function:", sendEmailError || sendEmailResult?.error);
+            } else {
+                console.log("Email sent successfully via send-email function.");
+                emailSent = true;
+            }
+        } catch (err) {
+            console.error("Critical error in email flow:", err);
         }
 
-        // 7. Send WhatsApp (Z-API)
+        // 8. Send WhatsApp (Z-API)
         const rawPhone = student.phone || "";
         let cleanPhone = rawPhone.replace(/\D/g, "");
         let whatsappSent = false;
@@ -199,9 +212,18 @@ serve(async (req) => {
             const securityToken = Deno.env.get("ZAPI_SECURITY_TOKEN");
 
             if (instanceId && instanceToken) {
-                const whatsappMessage = isNewUser
-                    ? `Olá *${student.name}*! 👋\n\n${resend ? "Aqui estão suas novas credenciais de acesso:" : "Sua matrícula na *Escola do Reino* foi aprovada! ✅\n\nAqui estão seus dados de acesso ao portal:"}\n\n📧 *Login:* ${student.email}\n🔑 *Senha:* ${tempPassword}\n\n🔗 Acesse em: https://escoladoreino.site/login`
-                    : `Olá *${student.name}*! 👋\n\nSua matrícula está ativa! ✅\n\nComo você já possui cadastro, pode acessar o portal com seu login e senha atuais.\n\n🔗 Acesse em: https://escoladoreino.site/login`;
+                let whatsappMessage = "";
+                if (isNewUser) {
+                    whatsappMessage = settings?.msg_payment_confirmed_whatsapp_new || `Olá *{nome}*! 👋\n\nSua matrícula na *Escola do Reino* foi aprovada! ✅\n\nAqui estão seus dados de acesso ao portal:\n\n📧 *Login:* {email}\n🔑 *Senha:* {senha}\n\n🔗 Acesse em: https://escoladoreino.site/login`;
+                } else {
+                    whatsappMessage = settings?.msg_payment_confirmed_whatsapp_returning || `Olá *{nome}*! 👋\n\nSua matrícula está ativa! ✅\n\nComo você já possui cadastro, pode acessar o portal com seu login e senha atuais.\n\n🔗 Acesse em: https://escoladoreino.site/login`;
+                }
+
+                // Replace variables in WhatsApp
+                whatsappMessage = whatsappMessage
+                    .replace(/{nome}/g, firstName)
+                    .replace(/{email}/g, student.email)
+                    .replace(/{senha}/g, tempPassword);
 
                 try {
                     const zaUrl = `https://api.z-api.io/instances/${instanceId}/token/${instanceToken}/send-text`;
@@ -221,7 +243,7 @@ serve(async (req) => {
             }
         }
 
-        // 8. Update Student Status & Credentials Timestamp
+        // 9. Update Student Status & Credentials Timestamp
         const updates: any = { status: 'ativo' };
         if (emailSent || whatsappSent) {
             updates.credentials_sent_at = new Date().toISOString();

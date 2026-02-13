@@ -35,10 +35,34 @@ serve(async (req) => {
         const userError = authResponse.error;
 
         if (userError || !user) {
-            console.error("Unauthorized access attempt:", userError);
+            console.error("Unauthorized access attempt. User Error:", userError);
             return new Response(
-                JSON.stringify({ error: 'Unauthorized', details: userError }),
+                JSON.stringify({
+                    error: 'Unauthorized',
+                    message: userError?.message || 'User not found in session',
+                    details: userError
+                }),
                 { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+        }
+
+        const supabaseAdmin = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        )
+
+        // Check if the requesting user is an admin in profiles table
+        const { data: profile, error: profileError } = await supabaseAdmin
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+
+        if (profileError || profile?.role !== 'admin') {
+            console.error("Forbidden: User is not an admin", profileError);
+            return new Response(
+                JSON.stringify({ error: 'Forbidden: Admin access required' }),
+                { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
         }
 
@@ -53,11 +77,6 @@ serve(async (req) => {
                 { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
         }
-
-        const supabaseAdmin = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-        )
 
         let targetUserId = userId;
 
