@@ -25,7 +25,7 @@ export interface CourseWithStatus extends Course {
 }
 
 export const coursesService = {
-    async getAvailableCourses(userId: string): Promise<CourseWithStatus[]> {
+    async getAvailableCourses(userId: string, currentCourseName?: string): Promise<CourseWithStatus[]> {
         // 1. Buscar todas as matrículas do aluno
         const { data: enrollments, error: enrollError } = await supabase
             .from("enrollments")
@@ -39,30 +39,79 @@ export const coursesService = {
 
         // 3. Buscar os cursos do landing_page_content (JSON)
         const landingContent = await landingService.getContent();
-        const allCourses = (landingContent.courses_data || []).map((c, index) => ({
-            id: c.title.toLowerCase().replace(/\s+/g, '-'), // ID gerado a partir do título para o JSON
-            title: c.title,
-            description: c.description,
-            price: c.price || 35,
-            thumbnail_url: null,
-            active: c.available !== false,
-            created_at: new Date().toISOString()
-        }));
+        const allCourses = (landingContent.courses_data || []).map((c, index) => {
+            const normalizedId = c.title.toLowerCase().trim().replace(/\s+/g, '-');
+            return {
+                id: normalizedId,
+                title: c.title.trim(),
+                description: c.description,
+                price: c.price || 35,
+                thumbnail_url: null,
+                active: c.available !== false,
+                next_course_id: c.next_course_id,
+                created_at: new Date().toISOString()
+            };
+        });
 
-        const activeCourses = allCourses.filter(c => c.active);
+        // Helper para normalizar strings para comparação
+        const normalize = (s: string) => s?.toLowerCase().trim().replace(/\s+/g, '-');
 
-        console.log(`[DEBUG] Cursos Ativos (JSON): ${activeCourses.length}. Matrículas: ${enrollments?.length || 0}`);
+        console.log(`[DEBUG] Cursos (JSON): ${allCourses.length}. Matrículas: ${enrollments?.length || 0}. Atual: ${currentCourseName}`);
 
-        // 4. Filtrar cursos que o aluno ainda não está matriculado
-        const enrolledCourseTitles = enrollments.map(e => e.course_id.toLowerCase()); // Usando ID gerado
-        const nextCourses = activeCourses.filter(c => !enrolledCourseTitles.includes(c.id));
+        // 4. Lógica de Sequência Especializada
+        let nextCourse: any | undefined;
+        const enrolledIds = enrollments.map(e => normalize(e.course_id));
 
-        // 5. Retornar apenas o PRÓXIMO curso na sequência
-        if (nextCourses.length > 0) {
+        const enrolledIdsWithCurrent = [...enrolledIds];
+        if (currentCourseName) {
+            enrolledIdsWithCurrent.push(normalize(currentCourseName));
+        }
+
+        console.log(`[DEBUG] enrolledIds para filtro:`, enrolledIdsWithCurrent);
+
+        // Tentar encontrar o próximo curso baseado na escolha manual do admin
+        if (currentCourseName) {
+            const currentCourseData = allCourses.find(c =>
+                normalize(c.title) === normalize(currentCourseName)
+            );
+
+            console.log(`[DEBUG] Curso Atual encontrado no JSON:`, currentCourseData?.title, "Sugestão Manual ID:", currentCourseData?.next_course_id);
+
+            if (currentCourseData?.next_course_id) {
+                const targetId = normalize(currentCourseData.next_course_id);
+                nextCourse = allCourses.find(c => normalize(c.id) === targetId);
+                console.log(`[DEBUG] Candidato Manual encontrado:`, nextCourse?.title);
+
+                // Se o aluno já estiver matriculado no curso sugerido, ignoramos a sugestão manual
+                if (nextCourse && enrolledIdsWithCurrent.includes(normalize(nextCourse.id))) {
+                    console.log(`[DEBUG] Candidato Manual ignorado porque já está na lista de inscritos/atual`);
+                    nextCourse = undefined;
+                }
+            }
+        }
+
+        // 5. Fallback: Filtrar cursos que o aluno ainda não está matriculado e pegar o primeiro da lista
+        if (!nextCourse) {
+            console.log(`[DEBUG] Entrando em Fallback...`);
+            const remainingCourses = allCourses.filter(c => {
+                const normId = normalize(c.id);
+                const isEnrolled = enrolledIdsWithCurrent.includes(normId);
+                console.log(`[DEBUG] Verificando curso ${c.title} (ID: ${normId}): Já inscrito? ${isEnrolled}`);
+                return !isEnrolled;
+            });
+
+            if (remainingCourses.length > 0) {
+                nextCourse = remainingCourses[0];
+                console.log(`[DEBUG] Fallback selecionou:`, nextCourse.title);
+            }
+        }
+
+        // 6. Retornar apenas o PRÓXIMO curso na sequência
+        if (nextCourse) {
             return [{
-                ...nextCourses[0],
+                ...nextCourse,
                 isLocked: hasActiveCourse
-            }];
+            } as CourseWithStatus];
         }
 
         return [];

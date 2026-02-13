@@ -8,6 +8,7 @@ export interface Course {
     features: string[];
     available?: boolean;
     price?: number;
+    next_course_id?: string;
 }
 
 export interface LandingPageContent {

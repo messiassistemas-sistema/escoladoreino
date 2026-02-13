@@ -13,11 +13,16 @@ import { landingService, LandingPageContent } from "@/services/landingService";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { Sparkles, ArrowRight, Zap, Target, ChefHat, Eye, X, GripVertical, ChevronRight } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
 
 export default function AdminEditorSite() {
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const [formData, setFormData] = useState<Partial<LandingPageContent>>({});
+    const [selectedCourseIndex, setSelectedCourseIndex] = useState<number | null>(null);
 
     const { data: content, isLoading } = useQuery({
         queryKey: ["landing-content"],
@@ -119,203 +124,363 @@ export default function AdminEditorSite() {
 
                         {/* Courses List Section */}
                         <TabsContent value="courses_list" className="mt-6">
-                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                                <div className="flex justify-between items-center">
-                                    <div>
-                                        <h3 className="text-lg font-bold">Cursos Oferecidos</h3>
-                                        <p className="text-sm text-muted-foreground">Gerencie os cursos que aparecem na página "Nossos Cursos".</p>
+                            <div className="flex flex-col lg:flex-row gap-6 min-h-[600px]">
+                                {/* Master Panel: Course Selection List */}
+                                <motion.div
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    className="w-full lg:w-80 shrink-0 space-y-4"
+                                >
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="font-bold text-lg">Cursos</h3>
+                                        <Button
+                                            size="sm"
+                                            onClick={() => {
+                                                const newCourse = {
+                                                    title: "Novo Curso",
+                                                    description: "Descrição do curso...",
+                                                    duration: "1 ano",
+                                                    level: "Básico",
+                                                    features: ["Matéria 1"]
+                                                };
+                                                const newCourses = [...(formData.courses_data || []), newCourse];
+                                                handleChange("courses_data", newCourses);
+                                                setSelectedCourseIndex(newCourses.length - 1);
+                                            }}
+                                            className="h-8 gap-1 text-xs"
+                                        >
+                                            <Plus className="h-3 w-3" /> Novo
+                                        </Button>
                                     </div>
-                                    <Button
-                                        onClick={() => {
-                                            const newCourses = [...(formData.courses_data || []), {
-                                                title: "Novo Curso",
-                                                description: "Descrição do curso...",
-                                                duration: "1 ano",
-                                                level: "Básico",
-                                                features: ["Matéria 1", "Matéria 2"]
-                                            }];
-                                            handleChange("courses_data", newCourses);
-                                        }}
-                                        className="gap-2"
-                                    >
-                                        <Plus className="h-4 w-4" /> Novo Curso
-                                    </Button>
-                                </div>
 
-                                <div className="grid gap-6">
-                                    {(formData.courses_data || []).map((course, index) => (
-                                        <Card key={index}>
-                                            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-                                                <CardTitle className="text-base font-medium">#{index + 1} - {course.title}</CardTitle>
-                                                <div className="flex items-center gap-1">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        disabled={index === 0}
-                                                        onClick={() => {
-                                                            const newCourses = [...(formData.courses_data || [])];
-                                                            const temp = newCourses[index - 1];
-                                                            newCourses[index - 1] = newCourses[index];
-                                                            newCourses[index] = temp;
-                                                            handleChange("courses_data", newCourses);
-                                                        }}
-                                                        title="Mover para cima"
-                                                    >
-                                                        <ArrowUp className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        disabled={index === (formData.courses_data?.length || 0) - 1}
-                                                        onClick={() => {
-                                                            const newCourses = [...(formData.courses_data || [])];
-                                                            const temp = newCourses[index + 1];
-                                                            newCourses[index + 1] = newCourses[index];
-                                                            newCourses[index] = temp;
-                                                            handleChange("courses_data", newCourses);
-                                                        }}
-                                                        title="Mover para baixo"
-                                                    >
-                                                        <ArrowDown className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => {
-                                                            const newCourses = (formData.courses_data || []).filter((_, i) => i !== index);
-                                                            handleChange("courses_data", newCourses);
-                                                        }}
-                                                        className="text-destructive hover:bg-destructive/10"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
+                                    <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+                                        {(formData.courses_data || []).length === 0 ? (
+                                            <div className="text-center py-8 border-2 border-dashed rounded-xl text-muted-foreground text-sm">
+                                                Nenhum curso cadastrado.
+                                            </div>
+                                        ) : (
+                                            formData.courses_data?.map((course, index) => (
+                                                <div
+                                                    key={index}
+                                                    onClick={() => setSelectedCourseIndex(index)}
+                                                    className={cn(
+                                                        "group relative flex items-center gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer",
+                                                        selectedCourseIndex === index
+                                                            ? "border-primary bg-primary/5 shadow-md shadow-primary/5"
+                                                            : "border-transparent hover:border-border hover:bg-muted/50"
+                                                    )}
+                                                >
+                                                    <div className={cn(
+                                                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg font-black text-xs",
+                                                        selectedCourseIndex === index ? "bg-primary text-white" : "bg-muted text-muted-foreground"
+                                                    )}>
+                                                        {(index + 1).toString().padStart(2, '0')}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <h4 className={cn(
+                                                            "text-sm font-bold truncate",
+                                                            selectedCourseIndex === index ? "text-primary" : "text-foreground"
+                                                        )}>
+                                                            {course.title || "Sem título"}
+                                                        </h4>
+                                                        <div className="flex items-center gap-2 mt-0.5">
+                                                            <div className={cn(
+                                                                "h-1.5 w-1.5 rounded-full",
+                                                                course.available !== false ? "bg-emerald-500" : "bg-muted-foreground/30"
+                                                            )} />
+                                                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
+                                                                {course.available !== false ? "Matrículas Abertas" : "Fechado"}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <ChevronRight className={cn(
+                                                        "h-4 w-4 transition-transform",
+                                                        selectedCourseIndex === index ? "text-primary translate-x-1" : "text-muted-foreground/0 group-hover:text-muted-foreground/50"
+                                                    )} />
                                                 </div>
-                                            </CardHeader>
-                                            <CardContent className="space-y-4">
-                                                <div className="grid gap-4 md:grid-cols-2">
-                                                    <div className="space-y-2">
-                                                        <Label>Nome do Curso</Label>
-                                                        <Input
-                                                            value={course.title}
-                                                            onChange={(e) => {
-                                                                const newCourses = [...(formData.courses_data || [])];
-                                                                newCourses[index].title = e.target.value;
-                                                                handleChange("courses_data", newCourses);
-                                                            }}
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label>Nível</Label>
-                                                        <Input
-                                                            value={course.level}
-                                                            onChange={(e) => {
-                                                                const newCourses = [...(formData.courses_data || [])];
-                                                                newCourses[index].level = e.target.value;
-                                                                handleChange("courses_data", newCourses);
-                                                            }}
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label>Descrição</Label>
-                                                    <Textarea
-                                                        rows={2}
-                                                        value={course.description}
-                                                        onChange={(e) => {
-                                                            const newCourses = [...(formData.courses_data || [])];
-                                                            newCourses[index].description = e.target.value;
-                                                            handleChange("courses_data", newCourses);
-                                                        }}
-                                                    />
-                                                </div>
-                                                <div className="grid gap-4 md:grid-cols-2">
-                                                    <div className="space-y-2">
-                                                        <Label>Duração</Label>
-                                                        <Input
-                                                            value={course.duration}
-                                                            onChange={(e) => {
-                                                                const newCourses = [...(formData.courses_data || [])];
-                                                                newCourses[index].duration = e.target.value;
-                                                                handleChange("courses_data", newCourses);
-                                                            }}
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label>Preço da Matrícula (R$)</Label>
-                                                        <Input
-                                                            type="number"
-                                                            value={course.price || ""}
-                                                            placeholder="Ex: 1500"
-                                                            onChange={(e) => {
-                                                                const newCourses = [...(formData.courses_data || [])];
-                                                                newCourses[index].price = Number(e.target.value);
-                                                                handleChange("courses_data", newCourses);
-                                                            }}
-                                                        />
-                                                    </div>
-                                                    <div className="flex items-center space-x-2 pt-8">
-                                                        <Switch
-                                                            id={`available-${index}`}
-                                                            checked={course.available !== false}
-                                                            onCheckedChange={(checked) => {
-                                                                const newCourses = [...(formData.courses_data || [])];
-                                                                newCourses[index].available = checked;
-                                                                handleChange("courses_data", newCourses);
-                                                            }}
-                                                        />
-                                                        <Label htmlFor={`available-${index}`}>Matrículas Abertas</Label>
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-3">
-                                                    <Label>Disciplinas/Tópicos</Label>
-                                                    <div className="grid gap-2">
-                                                        {(course.features || []).map((feature, fIndex) => (
-                                                            <div key={fIndex} className="flex gap-2">
-                                                                <Input
-                                                                    value={feature}
-                                                                    onChange={(e) => {
-                                                                        const newCourses = [...(formData.courses_data || [])];
-                                                                        const newFeatures = [...(newCourses[index].features || [])];
-                                                                        newFeatures[fIndex] = e.target.value;
-                                                                        newCourses[index].features = newFeatures;
-                                                                        handleChange("courses_data", newCourses);
-                                                                    }}
-                                                                    placeholder="Ex: Teologia Sistemática"
-                                                                />
+                                            ))
+                                        )}
+                                    </div>
+                                </motion.div>
+
+                                {/* Detail Panel: Course Editor */}
+                                <div className="flex-1 min-w-0">
+                                    <AnimatePresence mode="wait">
+                                        {selectedCourseIndex !== null && formData.courses_data?.[selectedCourseIndex] ? (
+                                            <motion.div
+                                                key={selectedCourseIndex}
+                                                initial={{ opacity: 0, y: 20 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: -20 }}
+                                                className="space-y-6"
+                                            >
+                                                <Card className="border-none shadow-elevated overflow-hidden">
+                                                    <CardHeader className="bg-muted/30 pb-4 flex flex-row items-center justify-between space-y-0">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="bg-primary/10 text-primary h-10 w-10 rounded-xl flex items-center justify-center font-black">
+                                                                {(selectedCourseIndex + 1).toString().padStart(2, '0')}
+                                                            </div>
+                                                            <div>
+                                                                <CardTitle className="text-xl font-black">Editar Curso</CardTitle>
+                                                                <CardDescription className="text-xs">Configurações detalhadas do módulo</CardDescription>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="flex items-center gap-1 border rounded-lg p-1 bg-background/50">
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="icon"
+                                                                    className="h-8 w-8"
+                                                                    disabled={selectedCourseIndex === 0}
                                                                     onClick={() => {
                                                                         const newCourses = [...(formData.courses_data || [])];
-                                                                        newCourses[index].features = (newCourses[index].features || []).filter((_, i) => i !== fIndex);
+                                                                        const temp = newCourses[selectedCourseIndex - 1];
+                                                                        newCourses[selectedCourseIndex - 1] = newCourses[selectedCourseIndex];
+                                                                        newCourses[selectedCourseIndex] = temp;
                                                                         handleChange("courses_data", newCourses);
+                                                                        setSelectedCourseIndex(selectedCourseIndex - 1);
                                                                     }}
-                                                                    className="text-destructive hover:bg-destructive/10"
                                                                 >
-                                                                    <Trash2 className="h-4 w-4" />
+                                                                    <ArrowUp className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8"
+                                                                    disabled={selectedCourseIndex === (formData.courses_data?.length || 0) - 1}
+                                                                    onClick={() => {
+                                                                        const newCourses = [...(formData.courses_data || [])];
+                                                                        const temp = newCourses[selectedCourseIndex + 1];
+                                                                        newCourses[selectedCourseIndex + 1] = newCourses[selectedCourseIndex];
+                                                                        newCourses[selectedCourseIndex] = temp;
+                                                                        handleChange("courses_data", newCourses);
+                                                                        setSelectedCourseIndex(selectedCourseIndex + 1);
+                                                                    }}
+                                                                >
+                                                                    <ArrowDown className="h-4 w-4" />
                                                                 </Button>
                                                             </div>
-                                                        ))}
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => {
-                                                                const newCourses = [...(formData.courses_data || [])];
-                                                                newCourses[index].features = [...(newCourses[index].features || []), ""];
-                                                                handleChange("courses_data", newCourses);
-                                                            }}
-                                                            className="w-full gap-2 mt-2"
-                                                        >
-                                                            <Plus className="h-4 w-4" />
-                                                            Adicionar Tópico
-                                                        </Button>
-                                                    </div>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => {
+                                                                    const newCourses = (formData.courses_data || []).filter((_, i) => i !== selectedCourseIndex);
+                                                                    handleChange("courses_data", newCourses);
+                                                                    setSelectedCourseIndex(null);
+                                                                }}
+                                                                className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => setSelectedCourseIndex(null)}
+                                                                className="h-8 w-8"
+                                                            >
+                                                                <X className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </CardHeader>
+                                                    <CardContent className="pt-6 space-y-8">
+                                                        <div className="grid gap-6 md:grid-cols-2">
+                                                            <div className="space-y-2">
+                                                                <Label className="text-xs font-black uppercase tracking-wider text-muted-foreground">Nome do Curso</Label>
+                                                                <Input
+                                                                    value={formData.courses_data[selectedCourseIndex].title}
+                                                                    className="font-bold border-2 focus-visible:ring-primary/20"
+                                                                    onChange={(e) => {
+                                                                        const newCourses = [...(formData.courses_data || [])];
+                                                                        newCourses[selectedCourseIndex].title = e.target.value;
+                                                                        handleChange("courses_data", newCourses);
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label className="text-xs font-black uppercase tracking-wider text-muted-foreground">Nível</Label>
+                                                                <Input
+                                                                    value={formData.courses_data[selectedCourseIndex].level}
+                                                                    className="font-bold border-2 focus-visible:ring-primary/20"
+                                                                    onChange={(e) => {
+                                                                        const newCourses = [...(formData.courses_data || [])];
+                                                                        newCourses[selectedCourseIndex].level = e.target.value;
+                                                                        handleChange("courses_data", newCourses);
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="space-y-2">
+                                                            <Label className="text-xs font-black uppercase tracking-wider text-muted-foreground">Descrição Curta</Label>
+                                                            <Textarea
+                                                                rows={3}
+                                                                value={formData.courses_data[selectedCourseIndex].description}
+                                                                className="font-medium border-2 focus-visible:ring-primary/20 resize-none"
+                                                                onChange={(e) => {
+                                                                    const newCourses = [...(formData.courses_data || [])];
+                                                                    newCourses[selectedCourseIndex].description = e.target.value;
+                                                                    handleChange("courses_data", newCourses);
+                                                                }}
+                                                            />
+                                                        </div>
+
+                                                        <div className="grid gap-6 md:grid-cols-3">
+                                                            <div className="space-y-2">
+                                                                <Label className="text-xs font-black uppercase tracking-wider text-muted-foreground">Duração</Label>
+                                                                <Input
+                                                                    value={formData.courses_data[selectedCourseIndex].duration}
+                                                                    className="font-bold border-2 focus-visible:ring-primary/20"
+                                                                    onChange={(e) => {
+                                                                        const newCourses = [...(formData.courses_data || [])];
+                                                                        newCourses[selectedCourseIndex].duration = e.target.value;
+                                                                        handleChange("courses_data", newCourses);
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label className="text-xs font-black uppercase tracking-wider text-muted-foreground">Investimento (R$)</Label>
+                                                                <Input
+                                                                    type="number"
+                                                                    value={formData.courses_data[selectedCourseIndex].price || ""}
+                                                                    className="font-bold border-2 focus-visible:ring-primary/20"
+                                                                    onChange={(e) => {
+                                                                        const newCourses = [...(formData.courses_data || [])];
+                                                                        newCourses[selectedCourseIndex].price = Number(e.target.value);
+                                                                        handleChange("courses_data", newCourses);
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                            <div className="flex flex-col justify-end">
+                                                                <div className="flex items-center space-x-2 py-2">
+                                                                    <Switch
+                                                                        id="course-available"
+                                                                        checked={formData.courses_data[selectedCourseIndex].available !== false}
+                                                                        onCheckedChange={(checked) => {
+                                                                            const newCourses = [...(formData.courses_data || [])];
+                                                                            newCourses[selectedCourseIndex].available = checked;
+                                                                            handleChange("courses_data", newCourses);
+                                                                        }}
+                                                                    />
+                                                                    <Label htmlFor="course-available" className="font-bold cursor-pointer">Matrículas Abertas</Label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="space-y-4 pt-4 border-t">
+                                                            <div className="flex items-center gap-2 mb-2">
+                                                                <Target className="h-4 w-4 text-primary" />
+                                                                <Label className="text-xs font-black uppercase tracking-wider text-primary">Sequência Pedagógica</Label>
+                                                            </div>
+                                                            <div className="grid gap-6 md:grid-cols-2 items-end">
+                                                                <div className="space-y-2">
+                                                                    <Label className="text-[10px] font-black uppercase text-muted-foreground">Próximo Curso Sugerido</Label>
+                                                                    <Select
+                                                                        value={formData.courses_data[selectedCourseIndex].next_course_id || "none"}
+                                                                        onValueChange={(value) => {
+                                                                            const newCourses = [...(formData.courses_data || [])];
+                                                                            newCourses[selectedCourseIndex].next_course_id = value === "none" ? undefined : value.toLowerCase().trim().replace(/\s+/g, '-');
+                                                                            handleChange("courses_data", newCourses);
+                                                                        }}
+                                                                    >
+                                                                        <SelectTrigger className="border-2 font-bold">
+                                                                            <SelectValue placeholder="Selecione o próximo curso" />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent>
+                                                                            <SelectItem value="none">Nenhum (Automático)</SelectItem>
+                                                                            {(formData.courses_data || [])
+                                                                                .filter((c, i) => i !== selectedCourseIndex && c.title && c.title.trim() !== "")
+                                                                                .map((c, i) => (
+                                                                                    <SelectItem
+                                                                                        key={i}
+                                                                                        value={c.title.toLowerCase().trim().replace(/\s+/g, '-')}
+                                                                                    >
+                                                                                        {c.title}
+                                                                                    </SelectItem>
+                                                                                ))
+                                                                            }
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </div>
+                                                                <p className="text-[10px] text-muted-foreground italic pb-2">
+                                                                    * Define qual módulo aparecerá no Portal do Aluno após a conclusão deste.
+                                                                </p>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="space-y-4 pt-4 border-t">
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="flex items-center gap-2">
+                                                                    <BookOpen className="h-4 w-4 text-primary" />
+                                                                    <Label className="text-xs font-black uppercase tracking-wider text-primary">Conteúdo Programático</Label>
+                                                                </div>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => {
+                                                                        const newCourses = [...(formData.courses_data || [])];
+                                                                        newCourses[selectedCourseIndex].features = [...(newCourses[selectedCourseIndex].features || []), ""];
+                                                                        handleChange("courses_data", newCourses);
+                                                                    }}
+                                                                    className="h-7 text-[10px] font-black uppercase tracking-widest gap-1 border-primary/20 text-primary hover:bg-primary/5"
+                                                                >
+                                                                    <Plus className="h-3 w-3" /> Adicionar Tópico
+                                                                </Button>
+                                                            </div>
+                                                            <div className="grid gap-3 sm:grid-cols-2">
+                                                                {(formData.courses_data[selectedCourseIndex].features || []).map((feature, fIndex) => (
+                                                                    <div key={fIndex} className="flex gap-2 group/feature">
+                                                                        <div className="relative flex-1">
+                                                                            <Input
+                                                                                value={feature}
+                                                                                className="pl-8 border-muted transition-all focus-visible:border-primary/50"
+                                                                                onChange={(e) => {
+                                                                                    const newCourses = [...(formData.courses_data || [])];
+                                                                                    const newFeatures = [...(newCourses[selectedCourseIndex].features || [])];
+                                                                                    newFeatures[fIndex] = e.target.value;
+                                                                                    newCourses[selectedCourseIndex].features = newFeatures;
+                                                                                    handleChange("courses_data", newCourses);
+                                                                                }}
+                                                                                placeholder="Ex: Teologia Sistemática"
+                                                                            />
+                                                                            <div className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/30 font-black text-[10px]">
+                                                                                {(fIndex + 1).toString().padStart(2, '0')}
+                                                                            </div>
+                                                                        </div>
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            onClick={() => {
+                                                                                const newCourses = [...(formData.courses_data || [])];
+                                                                                newCourses[selectedCourseIndex].features = (newCourses[selectedCourseIndex].features || []).filter((_, i) => i !== fIndex);
+                                                                                handleChange("courses_data", newCourses);
+                                                                            }}
+                                                                            className="h-9 w-9 text-destructive opacity-0 group-hover/feature:opacity-100 transition-opacity hover:bg-destructive/10"
+                                                                        >
+                                                                            <Trash2 className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            </motion.div>
+                                        ) : (
+                                            <motion.div
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                className="h-full flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-3xl text-center bg-muted/5"
+                                            >
+                                                <div className="h-20 w-20 rounded-full bg-primary/5 flex items-center justify-center mb-6">
+                                                    <ChefHat className="h-10 w-10 text-primary opacity-20" />
                                                 </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))}
+                                                <h4 className="text-xl font-black text-muted-foreground/60 mb-2">Selecione um curso</h4>
+                                                <p className="text-sm text-muted-foreground/40 max-w-xs">Escolha um módulo na lista à esquerda para editar seus detalhes, preços e sequência.</p>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </div>
-                            </motion.div>
+                            </div>
                         </TabsContent>
 
                         {/* Course (Details) & Social Details */}

@@ -73,11 +73,6 @@ export default function PortalDashboard() {
     queryFn: announcementsService.getAnnouncements
   });
 
-  const { data: availableCourses = [], refetch: refetchCourses } = useQuery({
-    queryKey: ['available-courses', user?.id],
-    queryFn: () => user?.id ? coursesService.getAvailableCourses(user.id) : [],
-    enabled: !!user?.id
-  });
 
   // Process Stats
   // 1. GPA
@@ -146,6 +141,15 @@ export default function PortalDashboard() {
       }
     }
   };
+
+  const { data: availableCourses = [], refetch: refetchCourses } = useQuery({
+    queryKey: ['available-courses', user?.id, upcomingLessons[0]?.subject?.name, student?.class_name],
+    queryFn: () => user?.id ? coursesService.getAvailableCourses(
+      user.id,
+      upcomingLessons[0]?.subject?.name || upcomingLessons[0]?.topic || student?.class_name
+    ) : [],
+    enabled: !!user?.id
+  });
 
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
@@ -290,6 +294,8 @@ export default function PortalDashboard() {
                   <div className="flex items-center gap-2">
                     {availableCourses[0].isLocked ? (
                       <Badge variant="outline" className="font-black text-[10px] tracking-wider border-muted-foreground/30 text-muted-foreground">AGUARDANDO</Badge>
+                    ) : !availableCourses[0].active ? (
+                      <Badge variant="outline" className="font-black text-[10px] tracking-wider border-amber-500/30 text-amber-500 bg-amber-500/5">EM BREVE</Badge>
                     ) : (
                       <Badge className="bg-emerald-500 hover:bg-emerald-600 font-black text-[10px] tracking-wider">LIBERADO</Badge>
                     )}
@@ -301,14 +307,16 @@ export default function PortalDashboard() {
                   <p className="text-sm font-bold text-muted-foreground max-w-lg line-clamp-2 md:line-clamp-none">
                     {availableCourses[0].isLocked
                       ? "Este módulo será liberado para matrícula assim que você concluir sua disciplina atual. Continue firme!"
-                      : (availableCourses[0].description || "Sua jornada teológica continua aqui. Matricule-se no próximo módulo e não perca o ritmo!")}
+                      : !availableCourses[0].active
+                        ? "Este módulo está em fase de planejamento e as matrículas serão abertas em breve. Fique atento!"
+                        : (availableCourses[0].description || "Sua jornada teológica continua aqui. Matricule-se no próximo módulo e não perca o ritmo!")}
                   </p>
                 </div>
               </div>
 
               <div className={cn(
                 "flex flex-col items-center gap-3 w-full md:w-auto md:min-w-[200px] p-4 rounded-xl backdrop-blur-sm border shadow-sm",
-                availableCourses[0].isLocked
+                (availableCourses[0].isLocked || !availableCourses[0].active)
                   ? "bg-muted/20 border-border/50"
                   : "bg-background/50 border-emerald-500/20"
               )}>
@@ -316,28 +324,30 @@ export default function PortalDashboard() {
                   <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-1">Investimento</p>
                   <p className={cn(
                     "text-3xl font-black tracking-tight",
-                    availableCourses[0].isLocked ? "text-muted-foreground/50" : "text-emerald-600"
+                    (availableCourses[0].isLocked || !availableCourses[0].active) ? "text-muted-foreground/50" : "text-emerald-600"
                   )}>
                     R$ {availableCourses[0].price?.toFixed(2) || "35,00"}
                   </p>
                 </div>
                 <Button
                   onClick={() => {
-                    if (!availableCourses[0].isLocked) {
+                    if (!availableCourses[0].isLocked && availableCourses[0].active) {
                       setSelectedCourse(availableCourses[0]);
                       setIsPaymentModalOpen(true);
                     }
                   }}
-                  disabled={availableCourses[0].isLocked}
+                  disabled={availableCourses[0].isLocked || !availableCourses[0].active}
                   className={cn(
                     "w-full font-black rounded-xl shadow-lg flex items-center justify-center gap-2 h-12 transition-all",
-                    availableCourses[0].isLocked
+                    (availableCourses[0].isLocked || !availableCourses[0].active)
                       ? "bg-muted-foreground/20 text-muted-foreground cursor-not-allowed shadow-none"
                       : "bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/20"
                   )}
                 >
                   {availableCourses[0].isLocked ? (
                     <>MÓDULO BLOQUEADO</>
+                  ) : !availableCourses[0].active ? (
+                    <>MATRÍCULAS EM BREVE</>
                   ) : (
                     <>
                       <Zap className="h-4 w-4 fill-current" />
@@ -349,6 +359,11 @@ export default function PortalDashboard() {
                 {availableCourses[0].isLocked && (
                   <p className="text-[10px] font-bold text-muted-foreground text-center">
                     Conclua seu módulo atual primeiro
+                  </p>
+                )}
+                {!availableCourses[0].isLocked && !availableCourses[0].active && (
+                  <p className="text-[10px] font-bold text-amber-600/70 text-center">
+                    Aguardando abertura de turma
                   </p>
                 )}
               </div>

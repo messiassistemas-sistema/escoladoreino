@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { landingService } from "@/services/landingService";
-import { motion } from "framer-motion";
-import { ArrowRight, CheckCircle, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { ArrowRight, CheckCircle, Loader2, MapPin, Globe, AlertTriangle } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -50,9 +51,23 @@ export default function Matricula() {
 
   useEffect(() => {
     if (cursoSelecionado) {
-      setSelectedCourseTitle(cursoSelecionado);
-    } else if (content?.courses_data && content.courses_data.length > 0 && !selectedCourseTitle) {
-      setSelectedCourseTitle(content.courses_data[0].title);
+      // Verificamos se o curso da URL está disponível (ativo)
+      // Ajuste: available !== false cobre tanto true quanto undefined (novo curso)
+      const isActive = content?.courses_data?.some(c =>
+        c.title.trim().toLowerCase() === cursoSelecionado.trim().toLowerCase() &&
+        c.available !== false
+      );
+
+      if (isActive) {
+        setSelectedCourseTitle(cursoSelecionado.trim());
+      } else if (content?.courses_data) {
+        // Se não estiver ativo, pegamos o primeiro ativo disponível
+        const firstActive = content.courses_data.find(c => c.available !== false);
+        if (firstActive) setSelectedCourseTitle(firstActive.title);
+      }
+    } else if (content?.courses_data && !selectedCourseTitle) {
+      const firstActive = content.courses_data.find(c => c.available !== false);
+      if (firstActive) setSelectedCourseTitle(firstActive.title);
     }
   }, [cursoSelecionado, content]);
 
@@ -62,7 +77,12 @@ export default function Matricula() {
     queryFn: settingsService.getSettings,
   });
 
-  const selectedCourseData = content?.courses_data?.find(c => c.title.trim() === selectedCourseTitle.trim());
+  // Prioritize active courses only
+  // Modification: available !== false means it's active by default (common in the EditorSite logic)
+  const availableActiveCourses = content?.courses_data?.filter(c => c.available !== false) || [];
+
+  const selectedCourseData = availableActiveCourses.find(c => c.title.trim().toLowerCase() === selectedCourseTitle.trim().toLowerCase());
+
   // Priority: 1. Global Settings Value -> 2. Course Specific Price -> 3. Default 100
   const currentPrice = settings?.enrollment_value || selectedCourseData?.price || 100.00;
 
@@ -74,6 +94,7 @@ export default function Matricula() {
     email: "",
     telefone: "",
     cpf: "",
+    modality: "presencial" as "presencial" | "online",
     acceptTerms: false,
   });
 
@@ -125,7 +146,7 @@ export default function Matricula() {
         status: 'pendente',
         attendance_rate: 0,
         average_grade: 0,
-        modality: 'online'
+        modality: formData.modality
       });
 
       // 2. Create Asaas Customer
@@ -265,26 +286,51 @@ export default function Matricula() {
                   value={selectedCourseTitle}
                   onValueChange={(value) => {
                     setSelectedCourseTitle(value);
-                    setFormData(prev => ({ ...prev, class_name: value }));
                   }}
                 >
-                  <SelectTrigger className="w-full bg-background/50 backdrop-blur-sm border-primary/20 h-11 text-lg">
+                  <SelectTrigger className="w-full bg-background/50 backdrop-blur-sm border-primary/20 h-12 text-lg font-medium ring-offset-background focus:ring-2 focus:ring-primary/20">
                     <SelectValue placeholder="Selecione um curso..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {content?.courses_data?.map((course) => (
-                      <SelectItem key={course.title} value={course.title}>
+                    {availableActiveCourses.map((course) => (
+                      <SelectItem key={course.title} value={course.title} className="py-3">
                         {course.title}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {availableActiveCourses.length === 0 && (
+                  <p className="mt-2 text-sm text-destructive font-medium">
+                    Não há cursos com matrículas abertas no momento.
+                  </p>
+                )}
               </div>
-              <p className="mb-8 text-muted-foreground">
-                Valor da Inscrição: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(currentPrice)}</strong>
-              </p>
-              <p className="mb-8 text-muted-foreground">
-                Preencha seus dados para iniciar o processo de matrícula.
+
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                className="mb-8 relative inline-block"
+              >
+                <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-primary/10 blur rounded-2xl" />
+                <div className="relative bg-card/80 backdrop-blur-sm border border-primary/20 px-8 py-4 rounded-2xl shadow-lg">
+                  <span className="block text-xs uppercase tracking-widest text-muted-foreground font-bold mb-1">
+                    Valor da Inscrição
+                  </span>
+                  <div className="flex items-baseline justify-center gap-1">
+                    <span className="text-2xl font-bold text-primary">R$</span>
+                    <span className="text-5xl font-black tracking-tight text-foreground">
+                      {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(currentPrice).split(',')[0]}
+                    </span>
+                    <span className="text-2xl font-bold text-foreground/70">
+                      ,{new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(currentPrice).split(',')[1]}
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
+
+              <p className="mb-8 text-muted-foreground/80 max-w-sm mx-auto leading-relaxed">
+                Preencha seus dados reais e o e-mail que você mais utiliza para receber seu acesso.
               </p>
             </motion.div>
 
@@ -335,6 +381,56 @@ export default function Matricula() {
                     }
                     required
                   />
+                </div>
+
+                <div className="space-y-4">
+                  <Label>Modalidade de Estudo *</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, modality: 'presencial' }))}
+                      className={cn(
+                        "flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all gap-2",
+                        formData.modality === 'presencial'
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-muted/20 text-muted-foreground hover:border-primary/30"
+                      )}
+                    >
+                      <MapPin className={cn("h-6 w-6", formData.modality === 'presencial' ? "text-primary" : "text-muted-foreground")} />
+                      <span className="font-bold text-sm">Presencial</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, modality: 'online' }))}
+                      className={cn(
+                        "flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all gap-2",
+                        formData.modality === 'online'
+                          ? "border-amber-500 bg-amber-500/10 text-amber-500"
+                          : "border-border bg-muted/20 text-muted-foreground hover:border-amber-500/30"
+                      )}
+                    >
+                      <Globe className={cn("h-6 w-6", formData.modality === 'online' ? "text-amber-500" : "text-muted-foreground")} />
+                      <span className="font-bold text-sm">Online</span>
+                    </button>
+                  </div>
+
+                  <AnimatePresence>
+                    {formData.modality === 'online' && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="flex gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200/90 text-sm leading-relaxed">
+                          <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
+                          <p>
+                            <strong>Atenção:</strong> A modalidade Online é destinada a alunos residentes fora de Cerejeiras. Sua solicitação passará por uma análise da direção antes da liberação definitiva.
+                          </p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 <div className="space-y-2">

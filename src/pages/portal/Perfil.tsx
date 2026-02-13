@@ -16,7 +16,9 @@ import {
     FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { KeyRound, Loader2, User, Mail, Hash } from "lucide-react";
+import { KeyRound, Loader2, User, Mail, Hash, MapPin, Globe } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { studentsService } from "@/services/studentsService";
@@ -138,6 +140,25 @@ export default function PortalPerfil() {
                             <div className="flex items-center gap-3 text-sm">
                                 <Hash className="h-4 w-4 text-muted-foreground" />
                                 <span className="text-muted-foreground font-medium">ID: {userData.student_id}</span>
+                            </div>
+                            <div className="mt-4 pt-4 border-t space-y-3">
+                                <Badge variant="secondary" className={cn(
+                                    "w-full justify-center py-1.5 gap-2 border shadow-sm",
+                                    student?.modality === 'online'
+                                        ? "bg-amber-100 text-amber-700 border-amber-200"
+                                        : "bg-blue-100 text-blue-700 border-blue-200"
+                                )}>
+                                    {student?.modality === 'online' ? <Globe className="h-3 w-3" /> : <MapPin className="h-3 w-3" />}
+                                    MODALIDADE: {student?.modality?.toUpperCase() || 'PRESENCIAL'}
+                                </Badge>
+
+                                {student?.modality === 'online' && student?.status === 'pendente' && (
+                                    <div className="text-center p-2 rounded-lg bg-amber-50 border border-amber-100 italic">
+                                        <p className="text-[10px] text-amber-700 font-bold uppercase tracking-tight">
+                                            Sob análise da direção
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         </CardContent>
                     </Card>

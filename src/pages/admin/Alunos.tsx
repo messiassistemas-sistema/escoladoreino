@@ -17,6 +17,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -572,17 +573,23 @@ export default function AdminAlunos() {
                             <p className="text-sm text-muted-foreground">
                               {aluno.email}
                             </p>
-                            <div className="flex gap-2 mt-1">
+                            <div className="flex flex-wrap gap-2 mt-1">
                               {aluno.credentials_sent_at && (
                                 <Badge variant="outline" className="text-[10px] h-5 gap-1 border-green-200 bg-green-50 text-green-700" title={`Credenciais enviadas em: ${new Date(aluno.credentials_sent_at).toLocaleString()}`}>
                                   <CheckCircle className="h-3 w-3" /> Credenciais Enviadas
                                 </Badge>
                               )}
-                              {aluno.modality === 'online' && (
-                                <Badge variant="secondary" className="text-[10px] h-5 bg-blue-100 text-blue-700 hover:bg-blue-200">
-                                  ONLINE
-                                </Badge>
-                              )}
+                              <Badge
+                                variant="secondary"
+                                className={cn(
+                                  "text-[10px] h-5",
+                                  aluno.modality === 'online'
+                                    ? "bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-200"
+                                    : "bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200"
+                                )}
+                              >
+                                {aluno.modality === 'online' ? 'ONLINE' : 'PRESENCIAL'}
+                              </Badge>
                             </div>
                           </div>
                         </div>
