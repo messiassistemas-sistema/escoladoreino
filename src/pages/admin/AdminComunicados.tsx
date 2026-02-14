@@ -21,6 +21,7 @@ import { CalendarIcon, Clock } from "lucide-react";
 import { format, startOfToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
+import { useEffect } from "react";
 
 export default function AdminComunicados() {
     const { toast } = useToast();
@@ -75,9 +76,21 @@ export default function AdminComunicados() {
         return false;
     });
 
-    // Since student.class_name typically stores the name string in this app (based on previous files), 
-    // I'll assume we match by Name for now. If ID is needed, I'll adjust.
     // Actually, looking at studentsService, it stores `class_name`. classesService likely returns objects with `name`.
+
+    useEffect(() => {
+        if (selectedAudience === 'pending' && !message) {
+            setMessage(
+                "Graça e Paz, {nome}! 👋\n\n" +
+                "Passando para lembrar que sua matrícula no {curso} da Escola do Reino ainda consta como pendente de pagamento.\n\n" +
+                "📖 Assim que o pagamento for confirmado pelo sistema, você receberá automaticamente seus dados de acesso ao Portal do Aluno, por aqui e também por e-mail.\n\n" +
+                "Caso já tenha realizado o pagamento, pode desconsiderar esta mensagem.\n" +
+                "Se precisar de ajuda ou tiver alguma dúvida, estamos à disposição para te auxiliar.\n\n" +
+                "Que Deus abençoe sua caminhada de aprendizado e chamado. 🙏\n" +
+                "Mensagem automática – Escola do Reino"
+            );
+        }
+    }, [selectedAudience]);
 
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -131,7 +144,7 @@ export default function AdminComunicados() {
                     campaign_id: campaign.id,
                     student_name: student.name,
                     phone: student.phone?.replace(/\D/g, "") || "",
-                    message_body: message.replace(/{nome}/g, student.name.split(" ")[0]).replace(/{name}/g, student.name.split(" ")[0]),
+                    message_body: message.replace(/{nome}/g, student.name.split(" ")[0]).replace(/{name}/g, student.name.split(" ")[0]).replace(/{curso}/g, student.class_name || "curso"),
                     status: 'scheduled',
                     scheduled_for: scheduleDate.toISOString()
                 }));
@@ -202,7 +215,7 @@ export default function AdminComunicados() {
 
                 // Construct Message
                 const firstName = student.name.split(" ")[0];
-                const finalMessage = message.replace(/{nome}/g, firstName).replace(/{name}/g, firstName);
+                const finalMessage = message.replace(/{nome}/g, firstName).replace(/{name}/g, firstName).replace(/{curso}/g, student.class_name || "curso");
 
                 addLog(`📤 Enviando para ${student.name} (${i + 1}/${targetStudents.length})...`);
 
@@ -399,10 +412,9 @@ export default function AdminComunicados() {
                             </div>
 
 
-                            {/* Message Editor */}
                             <div className="space-y-2 flex-1 flex flex-col">
                                 <div className="text-xs text-muted-foreground mb-1 flex justify-between">
-                                    <span>Variáveis: <code className="bg-muted px-1 rounded">{`{nome}`}</code></span>
+                                    <span>Variáveis: <code className="bg-muted px-1 rounded">{`{nome}`}</code>, <code className="bg-muted px-1 rounded">{`{curso}`}</code></span>
                                 </div>
                                 <RichTextEditor
                                     value={message}
