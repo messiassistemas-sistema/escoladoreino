@@ -26,6 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 export default function Matricula() {
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showPhoneWarning, setShowPhoneWarning] = useState(false);
 
   useEffect(() => {
     document.title = "Escola do Reino - Matrícula";
@@ -199,6 +200,18 @@ export default function Matricula() {
     }
   };
 
+  const checkPhoneExists = async () => {
+    const cleanPhone = formData.telefone.replace(/\D/g, "");
+    if (cleanPhone.length >= 10) { // Check if valid length before querying
+      const { data, error } = await supabase.rpc('check_phone_exists', { phone_number: formData.telefone });
+      if (data) {
+        setShowPhoneWarning(true);
+        // Clear phone input to force user to change it
+        setFormData(prev => ({ ...prev, telefone: "" }));
+      }
+    }
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -353,6 +366,7 @@ export default function Matricula() {
                         telefone: formatPhone(e.target.value),
                       }))
                     }
+                    onBlur={checkPhoneExists}
                     required
                   />
                 </div>
@@ -604,6 +618,52 @@ export default function Matricula() {
                 <p className="mt-6 text-center text-[10px] text-muted-foreground">
                   Ao confirmar, você será redirecionado para o ambiente seguro de pagamento do Asaas.
                 </p>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal de Aviso de Telefone Existente */}
+      <AnimatePresence>
+        {showPhoneWarning && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowPhoneWarning(false)}
+              className="absolute inset-0 bg-background/80 backdrop-blur-md"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md overflow-hidden rounded-3xl border border-destructive/20 bg-card shadow-2xl"
+            >
+              <div className="p-6 text-center">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+                  <AlertTriangle className="h-8 w-8" />
+                </div>
+                <h2 className="text-xl font-bold text-foreground">Telefone já cadastrado!</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Este número de telefone já está vinculado a um aluno em nossa base de dados.
+                </p>
+                <div className="mt-6 flex flex-col gap-3">
+                  <Button
+                    onClick={() => setShowPhoneWarning(false)}
+                    variant="default"
+                    className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Usar outro número
+                  </Button>
+                  <Link to="/portal" className="w-full">
+                    <Button variant="outline" className="w-full">
+                      Já sou aluno (Fazer Login)
+                    </Button>
+                  </Link>
+                </div>
               </div>
             </motion.div>
           </div>
