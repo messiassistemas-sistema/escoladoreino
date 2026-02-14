@@ -63,11 +63,13 @@ export default function AdminComunicados() {
     const targetStudents = students.filter(student => {
         // Must have phone and be active (optional condition, maybe 'ativo' only)
         const hasPhone = student.phone && student.phone.length > 8;
-        const isActive = student.status === 'ativo'; // Only active students? Maybe allow all for now.
+        const isActive = student.status === 'ativo';
+        const isPending = student.status === 'pendente';
 
         if (!hasPhone) return false;
 
         if (selectedAudience === 'all') return isActive;
+        if (selectedAudience === 'pending') return isPending;
         if (selectedAudience === 'class') return isActive && student.class_name === selectedClassId; // Trying to match by name as student.class_name stores the name, not ID? Need to check.
 
         return false;
@@ -283,6 +285,7 @@ export default function AdminComunicados() {
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="all">Todos os Alunos Ativos</SelectItem>
+                                            <SelectItem value="pending">Alunos Pendentes</SelectItem>
                                             <SelectItem value="class">Por Turma</SelectItem>
                                         </SelectContent>
                                     </Select>
