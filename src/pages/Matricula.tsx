@@ -35,7 +35,7 @@ export default function Matricula() {
   const [searchParams] = useSearchParams();
   const cursoSelecionado = searchParams.get("curso");
 
-  const { data: content } = useQuery({
+  const { data: content, isLoading: isLoadingContent } = useQuery({
     queryKey: ["landing-content"],
     queryFn: landingService.getContent,
   });
@@ -73,8 +73,7 @@ export default function Matricula() {
     }
   }, [cursoSelecionado, content]);
 
-
-  const { data: settings } = useQuery({
+  const { data: settings, isLoading: isLoadingSettings } = useQuery({
     queryKey: ["system-settings"],
     queryFn: settingsService.getSettings,
   });
@@ -255,9 +254,10 @@ export default function Matricula() {
                   onValueChange={(value) => {
                     setSelectedCourseTitle(value);
                   }}
+                  disabled={isLoadingContent}
                 >
                   <SelectTrigger className="w-full bg-background/50 backdrop-blur-sm border-primary/20 h-12 text-lg font-medium ring-offset-background focus:ring-2 focus:ring-primary/20">
-                    <SelectValue placeholder="Selecione um curso..." />
+                    <SelectValue placeholder={isLoadingContent ? "Carregando cursos..." : "Selecione um curso..."} />
                   </SelectTrigger>
                   <SelectContent>
                     {availableActiveCourses.map((course) => (
@@ -267,7 +267,7 @@ export default function Matricula() {
                     ))}
                   </SelectContent>
                 </Select>
-                {availableActiveCourses.length === 0 && (
+                {!isLoadingContent && availableActiveCourses.length === 0 && (
                   <p className="mt-2 text-sm text-destructive font-medium">
                     Não há cursos com matrículas abertas no momento.
                   </p>
@@ -286,13 +286,19 @@ export default function Matricula() {
                     Valor da Inscrição
                   </span>
                   <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-2xl font-bold text-primary">R$</span>
-                    <span className="text-5xl font-black tracking-tight text-foreground">
-                      {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(currentPrice).split(',')[0]}
-                    </span>
-                    <span className="text-2xl font-bold text-foreground/70">
-                      ,{new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(currentPrice).split(',')[1]}
-                    </span>
+                    {isLoadingContent || isLoadingSettings ? (
+                      <div className="h-12 w-32 bg-primary/20 animate-pulse rounded-lg" />
+                    ) : (
+                      <>
+                        <span className="text-2xl font-bold text-primary">R$</span>
+                        <span className="text-5xl font-black tracking-tight text-foreground">
+                          {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(currentPrice).split(',')[0]}
+                        </span>
+                        <span className="text-2xl font-bold text-foreground/70">
+                          ,{new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(currentPrice).split(',')[1]}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
               </motion.div>

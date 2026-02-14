@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { studentsService } from "@/services/studentsService";
+import { useStudentData } from "@/hooks/useStudentData";
 
 const formSchema = z.object({
     name: z.string().min(3, "O nome deve ter pelo menos 3 caracteres"),
@@ -42,12 +43,8 @@ export default function PortalPerfil() {
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
 
-    // Fetch Student Profile from Database
-    const { data: student, refetch: refetchStudent } = useQuery({
-        queryKey: ['student-profile', user?.email],
-        queryFn: () => user?.email ? studentsService.getStudentByEmail(user.email) : null,
-        enabled: !!user?.email
-    });
+    // Use centralized hook
+    const { student, refetchStudent, displayName, displayEmail, displayRegistration } = useStudentData();
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -60,16 +57,12 @@ export default function PortalPerfil() {
 
     // Update form when student data is loaded
     useEffect(() => {
-        if (student) {
-            form.reset({
-                name: student.name,
-                password: "",
-                confirmPassword: "",
-            });
-        } else if (user?.user_metadata) {
-            form.setValue("name", user.user_metadata.full_name || user.user_metadata.name || "");
-        }
-    }, [student, user, form]);
+        form.reset({
+            name: displayName,
+            password: "",
+            confirmPassword: "",
+        });
+    }, [displayName, displayEmail, form]);
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         setLoading(true);
@@ -114,9 +107,9 @@ export default function PortalPerfil() {
     };
 
     const userData = {
-        name: user?.user_metadata?.full_name || student?.name || user?.user_metadata?.name || "Aluno",
-        email: user?.email || "",
-        student_id: student?.registration_number || user?.user_metadata?.student_id || "...",
+        name: displayName,
+        email: displayEmail,
+        student_id: displayRegistration,
     };
 
     return (

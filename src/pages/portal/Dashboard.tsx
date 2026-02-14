@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { studentsService } from "@/services/studentsService";
+import { useStudentData } from "@/hooks/useStudentData";
 import { lessonsService } from "@/services/lessonsService";
 import { announcementsService } from "@/services/announcementsService";
 import { coursesService } from "@/services/coursesService";
@@ -43,11 +44,7 @@ export default function PortalDashboard() {
   };
 
   // Fetch Student Profile
-  const { data: student } = useQuery({
-    queryKey: ['student-profile', user?.email],
-    queryFn: () => user?.email ? studentsService.getStudentByEmail(user.email) : null,
-    enabled: !!user?.email
-  });
+  const { student, displayName } = useStudentData();
 
   // Fetch Data Dependent on Student ID
   const { data: grades = [] } = useQuery({
@@ -156,7 +153,7 @@ export default function PortalDashboard() {
     visible: { y: 0, opacity: 1 }
   };
 
-  const fullName = user?.user_metadata?.full_name || student?.name || user?.user_metadata?.name || 'Aluno';
+  const fullName = displayName;
   const firstName = fullName.split(' ')[0];
 
   return (
