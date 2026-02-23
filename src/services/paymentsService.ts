@@ -7,7 +7,7 @@ export interface Payment {
     amount: number;
     installments: string;
     class_name: string;
-    status: 'approved' | 'pending' | 'rejected' | 'cancelled';
+    status: 'approved' | 'pending' | 'rejected' | 'cancelled' | 'paid' | 'completed' | 'pago' | 'pendente';
     created_at: string;
     payment_provider: string;
     external_reference?: string;

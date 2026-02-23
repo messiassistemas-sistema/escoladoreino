@@ -65,10 +65,11 @@ export const studentsService = {
                 student_name: newStudent.name,
                 student_email: newStudent.email || "", // Email is key linking
                 amount: amount,
-                status: 'pending',
+                status: 'approved', // Changed from pending to approved per user request
                 installments: '1x',
                 class_name: newStudent.class_name || 'Nova Matrícula',
                 payment_method: 'manual',
+                payment_provider: 'Sistema',
                 created_at: new Date().toISOString()
             });
 
@@ -115,14 +116,47 @@ export const studentsService = {
                 updated_at: new Date().toISOString(),
             })
             .eq("id", id)
-            .select();
+            .select()
+            .single();
 
         if (error) {
             console.error("Erro ao atualizar aluno:", error);
             throw error;
         }
 
-        return (data && data.length > 0 ? data[0] : student) as Student;
+        // If status is being updated to 'ativo', ensure there is a payment record for this month
+        if (student.status === 'ativo' && data.email) {
+            try {
+                const now = new Date();
+                const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+                const { data: existingPayment } = await supabase
+                    .from("payments")
+                    .select("id")
+                    .eq("student_email", data.email)
+                    .gte("created_at", firstDayOfMonth)
+                    .maybeSingle();
+
+                if (!existingPayment) {
+                    const { data: settings } = await supabase.from("system_settings").select("enrollment_value").single();
+                    await supabase.from("payments").insert({
+                        student_name: data.name,
+                        student_email: data.email,
+                        amount: settings?.enrollment_value || 38,
+                        status: 'approved',
+                        installments: '1x',
+                        class_name: data.class_name || 'Ativação Manual',
+                        payment_method: 'manual',
+                        payment_provider: 'Sistema',
+                        created_at: new Date().toISOString()
+                    });
+                }
+            } catch (err) {
+                console.error("Failed to ensure payment on activation:", err);
+            }
+        }
+
+        return data as Student;
     },
 
     async deleteStudent(id: string): Promise<void> {

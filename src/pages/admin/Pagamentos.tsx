@@ -73,12 +73,27 @@ export default function AdminPagamentos() {
 
   const stats = {
     totalApproved: pagamentos
-      .filter((p) => p.status === "approved")
+      .filter((p) => {
+        const isApproved = p.status === "approved" || p.status === "paid" || p.status === "completed";
+        const isCurrentMonth = new Date(p.created_at).getMonth() === new Date().getMonth() &&
+          new Date(p.created_at).getFullYear() === new Date().getFullYear();
+        return isApproved && isCurrentMonth;
+      })
       .reduce((acc, p) => acc + (p.amount || 0), 0),
     totalPending: pagamentos
-      .filter((p) => p.status === "pending")
+      .filter((p) => {
+        const isPending = p.status === "pending" || p.status === "pendente";
+        const isCurrentMonth = new Date(p.created_at).getMonth() === new Date().getMonth() &&
+          new Date(p.created_at).getFullYear() === new Date().getFullYear();
+        return isPending && isCurrentMonth;
+      })
       .reduce((acc, p) => acc + (p.amount || 0), 0),
-    countApproved: pagamentos.filter((p) => p.status === "approved").length,
+    countApproved: pagamentos.filter((p) => {
+      const isApproved = p.status === "approved" || p.status === "paid" || p.status === "completed";
+      const isCurrentMonth = new Date(p.created_at).getMonth() === new Date().getMonth() &&
+        new Date(p.created_at).getFullYear() === new Date().getFullYear();
+      return isApproved && isCurrentMonth;
+    }).length,
     countRejected: pagamentos.filter((p) => p.status === "rejected").length,
   };
 
