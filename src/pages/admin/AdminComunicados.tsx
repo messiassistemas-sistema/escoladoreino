@@ -9,7 +9,7 @@ import { classesService } from "@/services/classesService";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, PauseCircle, PlayCircle, StopCircle, RefreshCw, MessageSquare } from "lucide-react";
+import { Loader2, Send, PauseCircle, PlayCircle, StopCircle, RefreshCw, MessageSquare, Search, Check, ChevronsUpDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
@@ -21,13 +21,17 @@ import { CalendarIcon, Clock } from "lucide-react";
 import { format, startOfToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import { useEffect } from "react";
 
 export default function AdminComunicados() {
     const { toast } = useToast();
     const [message, setMessage] = useState("");
-    const [selectedAudience, setSelectedAudience] = useState("all"); // 'all', 'class', 'status' (future)
+    const [selectedAudience, setSelectedAudience] = useState("all"); // 'all', 'class', 'status', 'individual'
     const [selectedClassId, setSelectedClassId] = useState("");
+    const [selectedStudentId, setSelectedStudentId] = useState("");
+    const [isStudentSelectOpen, setIsStudentSelectOpen] = useState(false);
 
     // Sending State
     const [isSending, setIsSending] = useState(false);
@@ -71,7 +75,8 @@ export default function AdminComunicados() {
 
         if (selectedAudience === 'all') return isActive;
         if (selectedAudience === 'pending') return isPending;
-        if (selectedAudience === 'class') return isActive && student.class_name === selectedClassId; // Trying to match by name as student.class_name stores the name, not ID? Need to check.
+        if (selectedAudience === 'class') return isActive && student.class_name === selectedClassId;
+        if (selectedAudience === 'individual') return student.id === selectedStudentId;
 
         return false;
     });
@@ -129,7 +134,7 @@ export default function AdminComunicados() {
                         title: `Disparo ${format(new Date(), "dd/MM HH:mm")}`,
                         message: message,
                         target_audience: selectedAudience,
-                        target_filter: selectedAudience === 'class' ? selectedClassId : null,
+                        target_filter: selectedAudience === 'class' ? selectedClassId : (selectedAudience === 'individual' ? selectedStudentId : null),
                         status: 'scheduled',
                         created_by: (await supabase.auth.getUser()).data.user?.id
                     })
@@ -300,6 +305,7 @@ export default function AdminComunicados() {
                                             <SelectItem value="all">Todos os Alunos Ativos</SelectItem>
                                             <SelectItem value="pending">Alunos Pendentes</SelectItem>
                                             <SelectItem value="class">Por Turma</SelectItem>
+                                            <SelectItem value="individual">Aluno Individual</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -319,6 +325,59 @@ export default function AdminComunicados() {
                                                 ))}
                                             </SelectContent>
                                         </Select>
+                                    </div>
+                                )}
+
+                                {selectedAudience === 'individual' && (
+                                    <div className="space-y-2">
+                                        <Label>Buscar Aluno</Label>
+                                        <Popover open={isStudentSelectOpen} onOpenChange={setIsStudentSelectOpen}>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    aria-expanded={isStudentSelectOpen}
+                                                    className="w-full justify-between"
+                                                    disabled={isSending}
+                                                >
+                                                    {selectedStudentId
+                                                        ? students.find((student) => student.id === selectedStudentId)?.name
+                                                        : "Selecionar aluno..."}
+                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[300px] p-0" align="start">
+                                                <Command>
+                                                    <CommandInput placeholder="Buscar por nome..." />
+                                                    <CommandList>
+                                                        <CommandEmpty>Nenhum aluno encontrado.</CommandEmpty>
+                                                        <CommandGroup>
+                                                            {students.map((student) => (
+                                                                <CommandItem
+                                                                    key={student.id}
+                                                                    value={student.name}
+                                                                    onSelect={() => {
+                                                                        setSelectedStudentId(student.id);
+                                                                        setIsStudentSelectOpen(false);
+                                                                    }}
+                                                                >
+                                                                    <Check
+                                                                        className={cn(
+                                                                            "mr-2 h-4 w-4",
+                                                                            selectedStudentId === student.id ? "opacity-100" : "opacity-0"
+                                                                        )}
+                                                                    />
+                                                                    <div className="flex flex-col">
+                                                                        <span>{student.name}</span>
+                                                                        <span className="text-[10px] text-muted-foreground">{student.class_name || "Sem turma"}</span>
+                                                                    </div>
+                                                                </CommandItem>
+                                                            ))}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
                                     </div>
                                 )}
                             </div>
