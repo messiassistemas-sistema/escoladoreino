@@ -76,6 +76,17 @@ export default function PortalMateriais() {
     return matchesSearch && matchesDisciplina;
   });
 
+  const handleDownload = async (material: any) => {
+    try {
+      await materialsService.incrementDownloads(material.id);
+      window.open(material.file_url, '_blank');
+    } catch (error) {
+      console.error("Erro ao incrementar downloads:", error);
+      // Fallback: abre o arquivo mesmo em caso de erro no contador
+      window.open(material.file_url, '_blank');
+    }
+  };
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
@@ -217,7 +228,7 @@ export default function PortalMateriais() {
                             size="sm"
                             variant="outline"
                             className="h-10 px-5 rounded-xl border-border/50 group-hover:border-primary/30 group-hover:bg-primary/5 transition-all gap-2 font-bold text-xs"
-                            onClick={() => window.open(material.file_url, '_blank')}
+                            onClick={() => handleDownload(material)}
                           >
                             <Download className="h-4 w-4" /> {material.type === 'video' ? 'Ver' : 'Baixar'}
                           </Button>

@@ -163,6 +163,17 @@ export default function AdminMateriais() {
       mat.subject_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleDownload = async (material: Material) => {
+    try {
+      await materialsService.incrementDownloads(material.id);
+      window.open(material.file_url, '_blank');
+      queryClient.invalidateQueries({ queryKey: ["materials"] });
+    } catch (error) {
+      console.error("Erro ao incrementar downloads:", error);
+      window.open(material.file_url, '_blank');
+    }
+  };
+
 
   return (
     <AdminLayout title="Materiais" description="Gerencie os materiais didáticos">
@@ -360,7 +371,7 @@ export default function AdminMateriais() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
                               className="gap-2"
-                              onClick={() => window.open(mat.file_url, '_blank')}
+                              onClick={() => handleDownload(mat)}
                             >
                               <Download className="h-4 w-4" />
                               Abrir / Download

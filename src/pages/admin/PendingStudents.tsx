@@ -15,6 +15,8 @@ import {
     ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -339,8 +341,8 @@ export default function PendingStudents() {
                                                 <TableCell>
                                                     <Badge variant="outline">{aluno.class_name || "Não definida"}</Badge>
                                                 </TableCell>
-                                                <TableCell className="text-muted-foreground text-sm">
-                                                    Hoje {/* Todo: Add created_at to Student interface if needed */}
+                                                <TableCell className="text-muted-foreground text-sm uppercase font-semibold">
+                                                    {aluno.created_at ? format(new Date(aluno.created_at), "dd/MM/yyyy", { locale: ptBR }) : "—"}
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex items-center justify-end gap-2">
