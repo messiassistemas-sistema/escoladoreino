@@ -51,17 +51,28 @@ export default function PortalPresenca() {
 
         try {
           // Parse potential JSON QR code
-          let lessonId = rawValue;
+          let lessonId = rawValue.trim();
           try {
             const data = JSON.parse(rawValue);
-            if (data && data.lessonId) lessonId = data.lessonId;
+            if (data && data.lessonId) lessonId = data.lessonId.trim();
           } catch (e) { /* Not JSON */ }
 
           // Validate UUID simply
+          if (lessonId.length < 20) {
+            toast.error("QR Code inválido.");
+            return;
+          }
           const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
           if (!uuidRegex.test(lessonId)) {
             toast.error("Código inválido. Certifique-se de escanear o QR Code da aula.");
             console.error("Scanned value:", rawValue);
+            return;
+          }
+
+          // Verificar se a chamada está aberta
+          const lesson = await lessonsService.getLessonById(lessonId);
+          if (!lesson || !lesson.attendance_open) {
+            toast.error("A chamada para esta aula está encerrada no momento.");
             return;
           }
 

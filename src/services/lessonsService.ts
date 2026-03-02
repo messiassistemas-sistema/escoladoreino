@@ -7,6 +7,7 @@ export interface Lesson extends Omit<LessonRow, 'mode' | 'status'> {
     mode: 'presencial' | 'online'; // Enforcing strict types for app logic
     status: 'agendada' | 'realizada' | 'cancelada';
 
+    attendance_open?: boolean;
     // Join data
     subject?: {
         name: string;
@@ -95,6 +96,40 @@ export const lessonsService = {
         }
 
         return data;
+    },
+
+    async toggleAttendance(id: string, isOpen: boolean): Promise<Lesson> {
+        const { data, error } = await supabase
+            .from("lessons")
+            .update({ attendance_open: isOpen })
+            .eq("id", id)
+            .select("*")
+            .single();
+
+        if (error) {
+            console.error("Erro ao alternar chamada:", error);
+            throw error;
+        }
+
+        return data as any as Lesson;
+    },
+
+    async getLessonById(id: string): Promise<Lesson> {
+        const { data, error } = await supabase
+            .from("lessons")
+            .select(`
+                *,
+                subject:subjects (name)
+            `)
+            .eq("id", id)
+            .single();
+
+        if (error) {
+            console.error("Erro ao buscar aula:", error);
+            throw error;
+        }
+
+        return data as any as Lesson;
     },
 
     async markAttendance(records: { student_id: string; lesson_id: string; status: 'present' | 'absent' }[]) {

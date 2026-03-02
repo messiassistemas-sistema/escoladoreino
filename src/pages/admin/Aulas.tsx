@@ -1,22 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { QRCodeCanvas } from "qrcode.react";
-import {
-  Plus,
-  Search,
-  MoreHorizontal,
-  Edit,
-  Trash2,
-  QrCode,
-  Calendar,
-  Clock,
-  MapPin,
-  UserCheck,
-  Check,
-  X,
-  Download,
-  Share2,
-} from "lucide-react";
+import { Check, Download, Plus, QrCode, Search, Share2, Trash2, X, MoreVertical, Calendar, Clock, MapPin, Users, BookOpen, Presentation, CheckCircle2, AlertCircle, ToggleLeft, ToggleRight, MoreHorizontal, UserCheck, Edit } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -88,7 +74,25 @@ export default function AdminAulas() {
     description: ""
   });
 
-  const { data: aulas = [], isLoading } = useQuery({
+  const handleToggleAttendanceOpen = async (lessonId: string, isOpen: boolean) => {
+    try {
+      await lessonsService.toggleAttendance(lessonId, isOpen);
+      toast({
+        title: isOpen ? "Chamada aberta" : "Chamada encerrada",
+        description: isOpen ? "Alunos podem registrar presença." : "Registros não serão mais aceitos.",
+        variant: "default",
+      });
+      refetch();
+    } catch (error) {
+      toast({
+        title: "Erro ao alterar status",
+        description: "Não foi possível atualizar a aula.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const { data: aulas = [], isLoading, refetch } = useQuery({
     queryKey: ["lessons"],
     queryFn: lessonsService.getLessons,
   });
@@ -722,8 +726,7 @@ export default function AdminAulas() {
                     value={JSON.stringify({
                       lessonId: selectedLessonForQR.id,
                       subjectName: subjects.find(s => s.id === selectedLessonForQR.subject_id)?.name,
-                      date: selectedLessonForQR.date,
-                      timestamp: Date.now()
+                      date: selectedLessonForQR.date
                     })}
                     size={220}
                     level="H" // High error correction level for better scanning
@@ -741,6 +744,26 @@ export default function AdminAulas() {
                   <p className="text-muted-foreground">
                     {selectedLessonForQR.class_name} • {new Date(selectedLessonForQR.date + "T00:00:00").toLocaleDateString("pt-BR")}
                   </p>
+                </div>
+              )}
+
+              {selectedLessonForQR && (
+                <div className="flex items-center space-x-2 bg-muted/50 p-4 rounded-xl w-full justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="attendance-toggle" className="text-base font-semibold">
+                      Abrir Chamada
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedLessonForQR.attendance_open
+                        ? "Alunos podem registrar presença agora."
+                        : "Chamada encerrada. Ative para aceitar registros."}
+                    </p>
+                  </div>
+                  <Switch
+                    id="attendance-toggle"
+                    checked={selectedLessonForQR.attendance_open || false}
+                    onCheckedChange={(checked) => handleToggleAttendanceOpen(selectedLessonForQR.id, checked)}
+                  />
                 </div>
               )}
             </div>
