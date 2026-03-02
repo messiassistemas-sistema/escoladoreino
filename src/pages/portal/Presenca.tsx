@@ -32,12 +32,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { studentsService } from "@/services/studentsService";
 import { lessonsService } from "@/services/lessonsService";
+import { useStudentData } from "@/hooks/useStudentData";
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
 export default function PortalPresenca() {
   const { user } = useAuth();
+  const { student } = useStudentData();
   const queryClient = useQueryClient();
   const [isScannerOpen, setIsScannerOpen] = useState(false);
 
@@ -64,7 +66,7 @@ export default function PortalPresenca() {
           }
 
           if (!student?.id) {
-            toast.error("Erro ao identificar aluno.");
+            toast.error(`Aluno não identificado para: ${user?.email}. Verifique se sua matrícula está aprovada.`);
             return;
           }
 
@@ -88,12 +90,7 @@ export default function PortalPresenca() {
     }
   };
 
-  // Fetch Student
-  const { data: student } = useQuery({
-    queryKey: ['student-profile', user?.email],
-    queryFn: () => user?.email ? studentsService.getStudentByEmail(user.email) : null,
-    enabled: !!user?.email
-  });
+  // Attendance query moved to next block
 
   // Fetch Attendance Records
   const { data: attendanceRecords = [], isLoading } = useQuery({

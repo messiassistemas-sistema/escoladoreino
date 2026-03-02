@@ -198,7 +198,7 @@ export const studentsService = {
         const { data, error } = await supabase
             .from("students")
             .select("*")
-            .eq("email", email)
+            .ilike("email", email)
             .maybeSingle();
 
         if (error) {

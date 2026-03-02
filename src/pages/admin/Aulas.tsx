@@ -206,7 +206,10 @@ export default function AdminAulas() {
   const handleOpenAttendance = (lesson: Lesson) => {
     setSelectedLessonForAttendance(lesson);
     // Filter students by lesson's class_name (assuming simple matching for MVP)
-    const classStudents = students.filter(s => s.class_name === lesson.class_name);
+    const classStudents = students.filter(s => {
+      const normalize = (name: string) => name?.toLowerCase().replace(/\./g, "").trim();
+      return normalize(s.class_name || "") === normalize(lesson.class_name || "");
+    });
 
     // Initialize all as present by default
     const initialData: Record<string, 'present' | 'absent'> = {};
@@ -655,7 +658,10 @@ export default function AdminAulas() {
                 </TableHeader>
                 <TableBody>
                   {selectedLessonForAttendance && students
-                    .filter(s => s.class_name === selectedLessonForAttendance.class_name)
+                    .filter(s => {
+                      const normalize = (name: string) => name?.toLowerCase().replace(/\./g, "").trim();
+                      return normalize(s.class_name || "") === normalize(selectedLessonForAttendance.class_name || "");
+                    })
                     .map(student => (
                       <TableRow key={student.id}>
                         <TableCell className="font-medium">{student.name}</TableCell>
@@ -678,13 +684,16 @@ export default function AdminAulas() {
                         </TableCell>
                       </TableRow>
                     ))}
-                  {selectedLessonForAttendance && students.filter(s => s.class_name === selectedLessonForAttendance.class_name).length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={3} className="text-center text-muted-foreground p-8">
-                        Nenhum aluno encontrado nesta turma ({selectedLessonForAttendance.class_name}).
-                      </TableCell>
-                    </TableRow>
-                  )}
+                  {selectedLessonForAttendance && students.filter(s => {
+                    const normalize = (name: string) => name?.toLowerCase().replace(/\./g, "").trim();
+                    return normalize(s.class_name || "") === normalize(selectedLessonForAttendance.class_name || "");
+                  }).length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center text-muted-foreground p-8">
+                          Nenhum aluno encontrado nesta turma ({selectedLessonForAttendance.class_name}).
+                        </TableCell>
+                      </TableRow>
+                    )}
                 </TableBody>
               </Table>
             </div>
