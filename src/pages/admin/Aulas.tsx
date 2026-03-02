@@ -223,8 +223,7 @@ export default function AdminAulas() {
     const records = Object.entries(attendanceData).map(([studentId, status]) => ({
       student_id: studentId,
       lesson_id: selectedLessonForAttendance.id,
-      status,
-      date: selectedLessonForAttendance.date
+      status
     }));
 
     attendanceMutation.mutate(records);

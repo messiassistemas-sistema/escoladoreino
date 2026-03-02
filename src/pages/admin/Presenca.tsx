@@ -53,8 +53,7 @@ export default function AdminPresenca() {
       return lessonsService.markAttendance([{
         student_id: studentId,
         lesson_id: lessonId,
-        status: status,
-        date: new Date().toISOString()
+        status: status
       }]);
     },
     onSuccess: () => {

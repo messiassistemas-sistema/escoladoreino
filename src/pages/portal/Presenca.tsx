@@ -72,9 +72,8 @@ export default function PortalPresenca() {
 
           await lessonsService.markAttendance([{
             student_id: student.id,
-            lesson_id: lessonId,
-            status: 'present',
-            date: new Date().toISOString()
+            lesson_id: lessonId.trim(),
+            status: 'present'
           }]);
 
           await queryClient.invalidateQueries({ queryKey: ['student-attendance'] });
