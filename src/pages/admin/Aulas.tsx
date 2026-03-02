@@ -76,12 +76,17 @@ export default function AdminAulas() {
 
   const handleToggleAttendanceOpen = async (lessonId: string, isOpen: boolean) => {
     try {
-      await lessonsService.toggleAttendance(lessonId, isOpen);
+      const updatedLesson = await lessonsService.toggleAttendance(lessonId, isOpen);
       toast({
         title: isOpen ? "Chamada aberta" : "Chamada encerrada",
         description: isOpen ? "Alunos podem registrar presença." : "Registros não serão mais aceitos.",
         variant: "default",
       });
+
+      if (selectedLessonForQR?.id === lessonId) {
+        setSelectedLessonForQR(updatedLesson);
+      }
+
       refetch();
     } catch (error) {
       toast({
@@ -748,21 +753,30 @@ export default function AdminAulas() {
               )}
 
               {selectedLessonForQR && (
-                <div className="flex items-center space-x-2 bg-muted/50 p-4 rounded-xl w-full justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="attendance-toggle" className="text-base font-semibold">
-                      Abrir Chamada
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedLessonForQR.attendance_open
-                        ? "Alunos podem registrar presença agora."
-                        : "Chamada encerrada. Ative para aceitar registros."}
-                    </p>
+                <div className={`flex items-center space-x-2 p-4 rounded-xl w-full justify-between transition-all border ${selectedLessonForQR.attendance_open
+                  ? "bg-green-500/10 border-green-500/30 ring-1 ring-green-500/20"
+                  : "bg-red-500/10 border-red-500/30"
+                  }`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full ${selectedLessonForQR.attendance_open ? "bg-green-500/20 text-green-600" : "bg-red-500/20 text-red-600"}`}>
+                      {selectedLessonForQR.attendance_open ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
+                    </div>
+                    <div className="space-y-0.5">
+                      <Label htmlFor="attendance-toggle" className="text-base font-bold">
+                        Chamada {selectedLessonForQR.attendance_open ? "Aberta" : "Fechada"}
+                      </Label>
+                      <p className={`text-xs ${selectedLessonForQR.attendance_open ? "text-green-700/70" : "text-destructive/70"}`}>
+                        {selectedLessonForQR.attendance_open
+                          ? "Alunos podem registrar presença agora."
+                          : "Ative para aceitar registros agora."}
+                      </p>
+                    </div>
                   </div>
                   <Switch
                     id="attendance-toggle"
                     checked={selectedLessonForQR.attendance_open || false}
                     onCheckedChange={(checked) => handleToggleAttendanceOpen(selectedLessonForQR.id, checked)}
+                    className="data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-red-200"
                   />
                 </div>
               )}
