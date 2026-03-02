@@ -12,7 +12,10 @@ import {
   ChevronRight,
   Info,
   ShieldCheck,
-  AlertCircle
+  AlertCircle,
+  ShieldAlert,
+  Search,
+  Check
 } from "lucide-react";
 import { PortalLayout } from "@/components/portal/PortalLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -42,6 +45,17 @@ export default function PortalPresenca() {
   const { student } = useStudentData();
   const queryClient = useQueryClient();
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [statusModal, setStatusModal] = useState<{
+    open: boolean;
+    type: 'success' | 'error' | 'loading';
+    title: string;
+    message: string;
+  }>({
+    open: false,
+    type: 'success',
+    title: '',
+    message: ''
+  });
 
   const handleScan = async (detectedCodes: any[]) => {
     if (detectedCodes && detectedCodes.length > 0) {
@@ -59,29 +73,53 @@ export default function PortalPresenca() {
 
           // Validate UUID simply
           if (lessonId.length < 20) {
-            toast.error("QR Code inválido.");
+            setStatusModal({
+              open: true,
+              type: 'error',
+              title: 'QR Code Inválido',
+              message: 'O código escaneado não parece ser uma aula válida.'
+            });
             return;
           }
           const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
           if (!uuidRegex.test(lessonId)) {
-            toast.error("Código inválido. Certifique-se de escanear o QR Code da aula.");
-            console.error("Scanned value:", rawValue);
+            setStatusModal({
+              open: true,
+              type: 'error',
+              title: 'Código Não Reconhecido',
+              message: 'Certifique-se de escanear o QR Code projetado pelo professor.'
+            });
             return;
           }
 
           // Verificar se a chamada está aberta
           const lesson = await lessonsService.getLessonById(lessonId);
           if (!lesson || !lesson.attendance_open) {
-            toast.error("A chamada para esta aula está encerrada no momento.");
+            setStatusModal({
+              open: true,
+              type: 'error',
+              title: 'Chamada Fechada',
+              message: 'O professor ainda não abriu a chamada para esta aula ou ela já foi encerrada.'
+            });
             return;
           }
 
           if (!student?.id) {
-            toast.error(`Aluno não identificado para: ${user?.email}. Verifique se sua matrícula está aprovada.`);
+            setStatusModal({
+              open: true,
+              type: 'error',
+              title: 'Aluno Não Identificado',
+              message: `Não encontramos seu perfil para ${user?.email}. Sua matrícula está aprovada?`
+            });
             return;
           }
 
-          toast.loading("Registrando presença...");
+          setStatusModal({
+            open: true,
+            type: 'loading',
+            title: 'Registrando...',
+            message: 'Aguarde um momento enquanto confirmamos sua presença.'
+          });
 
           await lessonsService.markAttendance([{
             student_id: student.id,
@@ -90,12 +128,21 @@ export default function PortalPresenca() {
           }]);
 
           await queryClient.invalidateQueries({ queryKey: ['student-attendance'] });
-          toast.dismiss();
-          toast.success("Presença registrada com sucesso! 🎉");
+
+          setStatusModal({
+            open: true,
+            type: 'success',
+            title: 'Presença Confirmada!',
+            message: `Sua presença na aula de ${lesson.subject?.name || "hoje"} foi registrada com sucesso. 🎉`
+          });
         } catch (error: any) {
           console.error(error);
-          toast.dismiss();
-          toast.error(`Erro: ${error.message || "Falha ao registrar"}`);
+          setStatusModal({
+            open: true,
+            type: 'error',
+            title: 'Falha no Registro',
+            message: error.message || "Ocorreu um erro inesperado ao processar sua presença."
+          });
         }
       }
     }
@@ -370,6 +417,86 @@ export default function PortalPresenca() {
           </motion.div>
         </div>
       </motion.div>
+
+      {/* High-Visibility Status Modal */}
+      <Dialog
+        open={statusModal.open}
+        onOpenChange={(open) => !open && setStatusModal(prev => ({ ...prev, open: false }))}
+      >
+        <DialogContent className="sm:max-w-md bg-background/95 backdrop-blur-2xl border-none shadow-2xl rounded-3xl overflow-hidden p-0">
+          <div className={cn(
+            "p-10 flex flex-col items-center text-center space-y-6",
+            statusModal.type === 'success' ? "bg-emerald-500/5" :
+              statusModal.type === 'error' ? "bg-rose-500/5" : "bg-primary/5"
+          )}>
+            <motion.div
+              initial={{ scale: 0.5, opacity: 0, rotate: -20 }}
+              animate={{ scale: 1, opacity: 1, rotate: 0 }}
+              transition={{
+                type: "spring",
+                stiffness: 260,
+                damping: 20,
+                delay: 0.1
+              }}
+              className={cn(
+                "h-24 w-24 rounded-full flex items-center justify-center shadow-lg",
+                statusModal.type === 'success' ? "bg-emerald-500 text-white shadow-emerald-500/30" :
+                  statusModal.type === 'error' ? "bg-rose-500 text-white shadow-rose-500/30" :
+                    "bg-primary text-white shadow-primary/30"
+              )}
+            >
+              {statusModal.type === 'success' && <Check className="h-12 w-12 stroke-[3px]" />}
+              {statusModal.type === 'error' && <ShieldAlert className="h-12 w-12 stroke-[2px]" />}
+              {statusModal.type === 'loading' && <Clock className="h-12 w-12 animate-pulse" />}
+            </motion.div>
+
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="space-y-2"
+            >
+              <h3 className={cn(
+                "font-display text-3xl font-black tracking-tight",
+                statusModal.type === 'success' ? "text-emerald-600" :
+                  statusModal.type === 'error' ? "text-rose-600" : "text-primary"
+              )}>
+                {statusModal.title}
+              </h3>
+              <p className="text-muted-foreground font-medium text-lg leading-relaxed max-w-[280px] mx-auto">
+                {statusModal.message}
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              className="w-full pt-4"
+            >
+              <Button
+                onClick={() => setStatusModal(prev => ({ ...prev, open: false }))}
+                className={cn(
+                  "w-full h-14 rounded-2xl font-bold text-lg shadow-lg transition-all active:scale-[0.98]",
+                  statusModal.type === 'success' ? "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20" :
+                    statusModal.type === 'error' ? "bg-rose-500 hover:bg-rose-600 shadow-rose-500/20" :
+                      "bg-primary hover:bg-primary/90 shadow-primary/20"
+                )}
+              >
+                {statusModal.type === 'loading' ? "Aguardando..." : "Entendido"}
+              </Button>
+            </motion.div>
+          </div>
+
+          {/* Success Decoration */}
+          {statusModal.type === 'success' && (
+            <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500" />
+          )}
+          {statusModal.type === 'error' && (
+            <div className="absolute top-0 left-0 w-full h-1 bg-rose-500" />
+          )}
+        </DialogContent>
+      </Dialog>
     </PortalLayout>
   );
 }
