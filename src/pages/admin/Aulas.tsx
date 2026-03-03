@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { QRCodeCanvas } from "qrcode.react";
-import { Check, Download, Plus, QrCode, Search, Share2, Trash2, X, MoreVertical, Calendar, Clock, MapPin, Users, BookOpen, Presentation, CheckCircle2, AlertCircle, ToggleLeft, ToggleRight, MoreHorizontal, UserCheck, Edit } from "lucide-react";
+import { Check, Download, Plus, QrCode, Search, Share2, Trash2, X, MoreVertical, Calendar, Clock, MapPin, Users, BookOpen, Presentation, CheckCircle2, AlertCircle, ToggleLeft, ToggleRight, MoreHorizontal, UserCheck, Edit, XCircle, FileText } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -41,12 +41,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from "@/components/ui/toggle-group";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { lessonsService, Lesson } from "@/services/lessonsService";
 import { subjectsService } from "@/services/subjectsService";
 import { classesService } from "@/services/classesService";
 import { studentsService } from "@/services/studentsService";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+
 
 export default function AdminAulas() {
   const { toast } = useToast();
@@ -57,8 +70,11 @@ export default function AdminAulas() {
   const [selectedLessonForQR, setSelectedLessonForQR] = useState<Lesson | null>(null);
   const [isAttendanceDialogOpen, setIsAttendanceDialogOpen] = useState(false);
   const [selectedLessonForAttendance, setSelectedLessonForAttendance] = useState<Lesson | null>(null);
-  const [attendanceData, setAttendanceData] = useState<Record<string, 'present' | 'absent'>>({});
+  const [attendanceData, setAttendanceData] = useState<Record<string, 'present' | 'absent' | 'justified'>>({});
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
+  const [isAbsenteesDialogOpen, setIsAbsenteesDialogOpen] = useState(false);
+  const [selectedLessonForAbsentees, setSelectedLessonForAbsentees] = useState<Lesson | null>(null);
+
   const [formData, setFormData] = useState({
     subject_id: "",
     teacher_name: "",
@@ -110,6 +126,17 @@ export default function AdminAulas() {
   const { data: classes = [] } = useQuery({
     queryKey: ["classes"],
     queryFn: classesService.getClasses,
+  });
+
+  const { data: allAttendance = [] } = useQuery({
+    queryKey: ["all-attendance-records"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("attendance_records")
+        .select("lesson_id, status, student_id");
+      if (error) throw error;
+      return data || [];
+    },
   });
 
   useEffect(() => {
@@ -212,6 +239,21 @@ export default function AdminAulas() {
     }
   });
 
+  const quickAttendanceMutation = useMutation({
+    mutationFn: lessonsService.markAttendance,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["all-attendance-records"] });
+      toast({ title: "Status atualizado!" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao atualizar status",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
   const handleOpenAttendance = (lesson: Lesson) => {
     setSelectedLessonForAttendance(lesson);
     // Filter students by lesson's class_name (assuming simple matching for MVP)
@@ -221,7 +263,7 @@ export default function AdminAulas() {
     });
 
     // Initialize all as present by default
-    const initialData: Record<string, 'present' | 'absent'> = {};
+    const initialData: Record<string, 'present' | 'absent' | 'justified'> = {};
     classStudents.forEach(s => {
       initialData[s.id] = 'present';
     });
@@ -246,6 +288,28 @@ export default function AdminAulas() {
       ...prev,
       [studentId]: prev[studentId] === 'present' ? 'absent' : 'present'
     }));
+  };
+
+  const handleExportAbsentees = (lesson: Lesson, absenteeList: string[]) => {
+    if (!absenteeList || absenteeList.length === 0) return;
+
+    const content = `LISTA DE ALUNOS AUSENTES\n` +
+      `Aula: ${lesson.topic || "Sem título"}\n` +
+      `Turma: ${lesson.class_name || "Sem turma"}\n` +
+      `Data: ${lesson.date ? new Date(lesson.date + "T00:00:00").toLocaleDateString("pt-BR") : "N/D"}\n` +
+      `Total de Faltas: ${absenteeList.length}\n\n` +
+      `Nomes:\n` +
+      absenteeList.sort().map(name => `- ${name}`).join('\n');
+
+    const element = document.createElement("a");
+    const file = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    element.href = URL.createObjectURL(file);
+    element.download = `faltas-${lesson.class_name || "aula"}-${lesson.date || "data"}.txt`;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+
+    toast({ title: "Lista exportada com sucesso!" });
   };
 
   const handleSave = () => {
@@ -322,6 +386,53 @@ export default function AdminAulas() {
       );
     }
   );
+
+  const getLessonAttendanceStats = (lessonId: string, className: string | null) => {
+    const lessonRecords = allAttendance.filter((a: any) => a.lesson_id === lessonId);
+    const present = lessonRecords.filter((a: any) => a.status === 'present').length;
+    const justifiedAbsences = lessonRecords.filter((a: any) => a.status === 'justified').length;
+
+    // Fallback: if no className is provided, we can only rely on explicitly recorded absences
+    if (!className) {
+      const recordedAbsences = lessonRecords.filter((a: any) => a.status === 'absent').length;
+      return { present, absent: recordedAbsences, justified: justifiedAbsences };
+    }
+
+    // Normal case: count students in this specific class
+    const normalize = (name: string) => name?.toLowerCase().replace(/\./g, "").trim();
+    const targetClass = normalize(className);
+    const totalStudentsInClass = students.filter(s => normalize(s.class_name || "") === targetClass).length;
+
+    // Absences = Total Students in Class - Students marked as 'present' - Students marked as 'justified'
+    const absent = Math.max(0, totalStudentsInClass - present - justifiedAbsences);
+
+    // Get detailed lists
+    const presentIds = lessonRecords.filter((a: any) => a.status === 'present').map((a: any) => a.student_id);
+    const justifiedIds = lessonRecords.filter((a: any) => a.status === 'justified').map((a: any) => a.student_id);
+    const presentOrJustifiedIds = [...presentIds, ...justifiedIds];
+
+    const presentList = students
+      .filter(s => normalize(s.class_name || "") === targetClass && presentIds.includes(s.id))
+      .map(s => ({ id: s.id, name: s.name }));
+
+    const justifiedList = students
+      .filter(s => normalize(s.class_name || "") === targetClass && justifiedIds.includes(s.id))
+      .map(s => ({ id: s.id, name: s.name }));
+
+    const absenteeList = students
+      .filter(s => normalize(s.class_name || "") === targetClass && !presentOrJustifiedIds.includes(s.id))
+      .map(s => ({ id: s.id, name: s.name }));
+
+    return {
+      present,
+      absent,
+      justified: justifiedAbsences,
+      totalInClass: totalStudentsInClass,
+      presentList,
+      justifiedList,
+      absenteeList
+    };
+  };
 
 
   return (
@@ -520,6 +631,7 @@ export default function AdminAulas() {
                     <TableHead>Professor</TableHead>
                     <TableHead>Data/Horário</TableHead>
                     <TableHead>Local</TableHead>
+                    <TableHead className="text-center">Presença</TableHead>
                     <TableHead className="text-center">Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -571,6 +683,47 @@ export default function AdminAulas() {
                           <MapPin className="h-4 w-4 text-muted-foreground" />
                           {aula.location}
                         </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {(() => {
+                          const stats = getLessonAttendanceStats(aula.id, aula.class_name);
+                          if (stats.present === 0 && stats.absent === 0 && stats.justified === 0) {
+                            return <span className="text-muted-foreground text-xs">—</span>;
+                          }
+                          return (
+                            <div className="flex flex-col items-center gap-0.5">
+                              <button
+                                onClick={() => {
+                                  setSelectedLessonForAbsentees(aula);
+                                  setIsAbsenteesDialogOpen(true);
+                                }}
+                                className="text-xs font-medium text-success hover:underline cursor-pointer"
+                              >
+                                {stats.present} Presenças
+                              </button>
+                              {stats.justified > 0 && (
+                                <button
+                                  onClick={() => {
+                                    setSelectedLessonForAbsentees(aula);
+                                    setIsAbsenteesDialogOpen(true);
+                                  }}
+                                  className="text-xs font-medium text-amber-500 hover:underline cursor-pointer"
+                                >
+                                  {stats.justified} Justificadas
+                                </button>
+                              )}
+                              <button
+                                onClick={() => {
+                                  setSelectedLessonForAbsentees(aula);
+                                  setIsAbsenteesDialogOpen(true);
+                                }}
+                                className="text-xs font-medium text-destructive hover:underline cursor-pointer"
+                              >
+                                {stats.absent} Faltas
+                              </button>
+                            </div>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge
@@ -656,7 +809,7 @@ export default function AdminAulas() {
                 )}
               </DialogDescription>
             </DialogHeader>
-            <div className="py-4">
+            <div className="py-4 max-h-[65vh] overflow-y-auto pr-2 custom-scrollbar">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -675,21 +828,53 @@ export default function AdminAulas() {
                       <TableRow key={student.id}>
                         <TableCell className="font-medium">{student.name}</TableCell>
                         <TableCell className="text-center">
-                          <Badge
-                            variant={attendanceData[student.id] === 'present' ? 'default' : 'destructive'}
-                            className={attendanceData[student.id] === 'present' ? 'bg-success text-success-foreground' : ''}
+                          <ToggleGroup
+                            type="single"
+                            value={attendanceData[student.id]}
+                            onValueChange={(val) => {
+                              if (val) setAttendanceData(prev => ({ ...prev, [student.id]: val as any }));
+                            }}
+                            className="justify-center"
                           >
-                            {attendanceData[student.id] === 'present' ? 'Presente' : 'Ausente'}
-                          </Badge>
+                            <ToggleGroupItem
+                              value="present"
+                              aria-label="Presença"
+                              className={cn(
+                                "flex items-center gap-1 px-3",
+                                attendanceData[student.id] === 'present' ? "bg-success text-success-foreground hover:bg-success/90" : "bg-muted/50"
+                              )}
+                            >
+                              <CheckCircle2 className="h-4 w-4" />
+                              <span className="hidden sm:inline">Presença</span>
+                            </ToggleGroupItem>
+
+                            <ToggleGroupItem
+                              value="justified"
+                              aria-label="Justificada"
+                              className={cn(
+                                "flex items-center gap-1 px-3",
+                                attendanceData[student.id] === 'justified' ? "bg-amber-500 text-white hover:bg-amber-600" : "bg-muted/50"
+                              )}
+                            >
+                              <FileText className="h-4 w-4" />
+                              <span className="hidden sm:inline">Justificada</span>
+                            </ToggleGroupItem>
+
+                            <ToggleGroupItem
+                              value="absent"
+                              aria-label="Falta"
+                              className={cn(
+                                "flex items-center gap-1 px-3",
+                                attendanceData[student.id] === 'absent' ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : "bg-muted/50"
+                              )}
+                            >
+                              <XCircle className="h-4 w-4" />
+                              <span className="hidden sm:inline">Falta</span>
+                            </ToggleGroupItem>
+                          </ToggleGroup>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => toggleAttendance(student.id)}
-                          >
-                            {attendanceData[student.id] === 'present' ? <X className="h-4 w-4 text-destructive" /> : <Check className="h-4 w-4 text-success" />}
-                          </Button>
+                          {/* Removing the old toggle button since we have badges now */}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -795,6 +980,161 @@ export default function AdminAulas() {
           </DialogContent>
         </Dialog>
       </div >
+      <Dialog open={isAbsenteesDialogOpen} onOpenChange={setIsAbsenteesDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserCheck className="h-5 w-5 text-primary" />
+              Resumo de Presença
+            </DialogTitle>
+            <DialogDescription>
+              {selectedLessonForAbsentees?.topic || "Aula selecionada"} - {selectedLessonForAbsentees?.class_name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            {selectedLessonForAbsentees && (() => {
+              const stats = getLessonAttendanceStats(selectedLessonForAbsentees.id, selectedLessonForAbsentees.class_name);
+              return (
+                <Tabs defaultValue="absent" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="present">Presentes ({stats.present || 0})</TabsTrigger>
+                    <TabsTrigger value="absent">Faltas ({stats.absent || 0})</TabsTrigger>
+                    <TabsTrigger value="justified">Justif. ({stats.justified || 0})</TabsTrigger>
+                  </TabsList>
+
+                  <div className="mt-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                    <TabsContent value="present" className="mt-0 space-y-2">
+                      {stats.presentList && stats.presentList.length > 0 ? (
+                        stats.presentList.sort((a, b) => a.name.localeCompare(b.name)).map((student, index) => (
+                          <div key={index} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-success/10 border border-success/20">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="h-4 w-4 text-success" />
+                              <span className="text-sm font-medium">{student.name}</span>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0 text-amber-500 hover:text-amber-600 hover:bg-amber-500/10"
+                                onClick={() => quickAttendanceMutation.mutate([{ student_id: student.id, lesson_id: selectedLessonForAbsentees!.id, status: 'justified' }])}
+                                title="Mudar para Justificada"
+                              >
+                                <FileText className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0 text-destructive hover:text-destructive-destructive hover:bg-destructive/10"
+                                onClick={() => quickAttendanceMutation.mutate([{ student_id: student.id, lesson_id: selectedLessonForAbsentees!.id, status: 'absent' }])}
+                                title="Mudar para Falta"
+                              >
+                                <XCircle className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground italic">Nenhum aluno presente.</div>
+                      )}
+                    </TabsContent>
+
+                    <TabsContent value="absent" className="mt-0 space-y-2">
+                      {stats.absenteeList && stats.absenteeList.length > 0 ? (
+                        stats.absenteeList.sort((a, b) => a.name.localeCompare(b.name)).map((student, index) => (
+                          <div key={index} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-destructive/10 border border-destructive/20">
+                            <div className="flex items-center gap-2">
+                              <XCircle className="h-4 w-4 text-destructive" />
+                              <span className="text-sm font-medium">{student.name}</span>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0 text-success hover:text-success hover:bg-success/10"
+                                onClick={() => quickAttendanceMutation.mutate([{ student_id: student.id, lesson_id: selectedLessonForAbsentees!.id, status: 'present' }])}
+                                title="Mudar para Presença"
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0 text-amber-500 hover:text-amber-600 hover:bg-amber-500/10"
+                                onClick={() => quickAttendanceMutation.mutate([{ student_id: student.id, lesson_id: selectedLessonForAbsentees!.id, status: 'justified' }])}
+                                title="Mudar para Justificada"
+                              >
+                                <FileText className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground italic">Nenhum aluno faltante.</div>
+                      )}
+                    </TabsContent>
+
+                    <TabsContent value="justified" className="mt-0 space-y-2">
+                      {stats.justifiedList && stats.justifiedList.length > 0 ? (
+                        stats.justifiedList.sort((a, b) => a.name.localeCompare(b.name)).map((student, index) => (
+                          <div key={index} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                            <div className="flex items-center gap-2">
+                              <AlertCircle className="h-4 w-4 text-amber-500" />
+                              <span className="text-sm font-medium">{student.name}</span>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0 text-success hover:text-success hover:bg-success/10"
+                                onClick={() => quickAttendanceMutation.mutate([{ student_id: student.id, lesson_id: selectedLessonForAbsentees!.id, status: 'present' }])}
+                                title="Mudar para Presença"
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0 text-destructive hover:text-destructive-destructive hover:bg-destructive/10"
+                                onClick={() => quickAttendanceMutation.mutate([{ student_id: student.id, lesson_id: selectedLessonForAbsentees!.id, status: 'absent' }])}
+                                title="Mudar para Falta"
+                              >
+                                <XCircle className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground italic">Nenhuma falta justificada.</div>
+                      )}
+                    </TabsContent>
+                  </div>
+                </Tabs>
+              );
+            })()}
+          </div>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            {selectedLessonForAbsentees && (() => {
+              const stats = getLessonAttendanceStats(selectedLessonForAbsentees.id, selectedLessonForAbsentees.class_name);
+              if (stats.absenteeList && stats.absenteeList.length > 0) {
+                return (
+                  <Button
+                    variant="default"
+                    className="w-full sm:w-auto gap-2"
+                    onClick={() => handleExportAbsentees(selectedLessonForAbsentees, stats.absenteeList.map(s => s.name))}
+                  >
+                    <Download className="h-4 w-4" />
+                    Exportar Lista
+                  </Button>
+                );
+              }
+              return null;
+            })()}
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setIsAbsenteesDialogOpen(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout >
   );
 }

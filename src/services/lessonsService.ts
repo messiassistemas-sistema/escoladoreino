@@ -132,7 +132,7 @@ export const lessonsService = {
         return data as any as Lesson;
     },
 
-    async markAttendance(records: { student_id: string; lesson_id: string; status: 'present' | 'absent' }[]) {
+    async markAttendance(records: { student_id: string; lesson_id: string; status: 'present' | 'absent' | 'justified' }[]) {
         const { data, error } = await supabase
             .from("attendance_records")
             .upsert(records, { onConflict: 'student_id, lesson_id' })

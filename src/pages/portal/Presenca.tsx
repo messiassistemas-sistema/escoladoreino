@@ -136,16 +136,45 @@ export default function PortalPresenca() {
             message: `Sua presença na aula de ${lesson.subject?.name || "hoje"} foi registrada com sucesso. 🎉`
           });
         } catch (error: any) {
-          console.error(error);
+          console.error("Erro ao registrar presença:", error);
+
+          let errorMessage = "Ocorreu um erro inesperado ao processar sua presença.";
+          if (error.message?.includes("row-level security policy")) {
+            errorMessage = "Erro de permissão no servidor. Por favor, contate o administrador.";
+          }
+
           setStatusModal({
             open: true,
             type: 'error',
             title: 'Falha no Registro',
-            message: error.message || "Ocorreu um erro inesperado ao processar sua presença."
+            message: errorMessage
           });
         }
       }
     }
+  };
+
+  const handleScannerError = (error: any) => {
+    console.error("Scanner error:", error);
+
+    let title = "Erro na Câmera";
+    let message = "Não foi possível acessar a câmera para escanear o código.";
+
+    if (error?.name === 'AbortError' || error?.message?.includes('abort')) {
+      title = "Scanner Interrompido";
+      message = "A leitura foi interrompida ou demorou demais. Por favor, tente novamente.";
+    } else if (error?.name === 'NotAllowedError') {
+      title = "Permissão Negada";
+      message = "Você precisa permitir o acesso à câmera nas configurações do seu navegador para escanear o QR Code.";
+    }
+
+    setIsScannerOpen(false);
+    setStatusModal({
+      open: true,
+      type: 'error',
+      title,
+      message
+    });
   };
 
   // Attendance query moved to next block
@@ -243,6 +272,7 @@ export default function PortalPresenca() {
                         <div className="relative w-full aspect-square max-w-[300px] overflow-hidden rounded-[2rem] border-4 border-primary/20 bg-black">
                           <Scanner
                             onScan={handleScan}
+                            onError={handleScannerError}
                             styles={{ container: { width: '100%', height: '100%' } }}
                             components={{ torch: true }}
                           />
