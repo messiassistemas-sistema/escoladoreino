@@ -42,6 +42,13 @@ export default function AdminComunicados() {
     const [currentStudent, setCurrentStudent] = useState<string | null>(null);
     const [logs, setLogs] = useState<string[]>([]);
 
+    // Batch Pause Configuration
+    const [batchSize, setBatchSize] = useState(20);
+    const [pauseDuration, setPauseDuration] = useState(5);
+    const [pauseUnit, setPauseUnit] = useState<"seconds" | "minutes">("minutes");
+    const [isBatchPaused, setIsBatchPaused] = useState(false);
+    const [batchPauseTimer, setBatchPauseTimer] = useState(0);
+
     // Advanced Configuration
     const [delaySeconds, setDelaySeconds] = useState(15); // Default 15s
     const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
@@ -197,8 +204,31 @@ export default function AdminComunicados() {
         setErrorCount(0);
         setProgress(0);
         setLogs([]);
+        setIsBatchPaused(false);
+        setBatchPauseTimer(0);
 
         for (let i = 0; i < targetStudents.length; i++) {
+            // Check Batch Pause
+            if (i > 0 && i % batchSize === 0) {
+                setIsBatchPaused(true);
+                const totalSeconds = pauseUnit === "minutes" ? pauseDuration * 60 : pauseDuration;
+                setBatchPauseTimer(totalSeconds);
+
+                addLog(`🛡️ Pausa de segurança iniciada: ${pauseDuration} ${pauseUnit === "minutes" ? "minutos" : "segundos"}.`);
+
+                // Countdown loop
+                for (let seconds = totalSeconds; seconds > 0; seconds--) {
+                    if (shouldStopRef.current) break;
+                    setBatchPauseTimer(seconds);
+                    await delay(1000);
+                }
+
+                setIsBatchPaused(false);
+                setBatchPauseTimer(0);
+                if (shouldStopRef.current) break;
+                addLog("🚀 Pausa finalizada. Retomando envios...");
+            }
+
             // Check Stop
             if (shouldStopRef.current) {
                 addLog("🛑 Envio interrompido pelo usuário.");
@@ -411,63 +441,76 @@ export default function AdminComunicados() {
                                     </p>
                                 </div>
 
-                                <div className="space-y-4 border p-3 rounded-md bg-muted/10">
-                                    <div className="flex items-center justify-between">
-                                        <Label htmlFor="schedule-mode">Agendar Envio</Label>
-                                        <Switch
-                                            id="schedule-mode"
-                                            checked={isScheduling}
-                                            onCheckedChange={setIsScheduling}
+                            </div>
+
+                            {/* Flow Configuration: Batch & Pause */}
+                            <div className="col-span-1 md:col-span-2 space-y-4 border p-4 rounded-md bg-primary/5 border-primary/10">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-base font-semibold flex items-center gap-2">
+                                        <PauseCircle className="h-4 w-4 text-primary" />
+                                        Pausa Automática por Lote
+                                    </Label>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-[10px] h-7 bg-primary/10 text-primary hover:bg-primary/20"
+                                        onClick={() => {
+                                            setDelaySeconds(30);
+                                            setBatchSize(25);
+                                            setPauseDuration(5);
+                                            setPauseUnit("minutes");
+                                            toast({ title: "Modo Seguro Ativado", description: "Configurações recomendadas aplicadas." });
+                                        }}
+                                        disabled={isSending}
+                                    >
+                                        Modo Seguro (Recomendado)
+                                    </Button>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-xs">Tamanho do Lote</Label>
+                                        <div className="flex items-center gap-2">
+                                            <Input
+                                                type="number"
+                                                value={batchSize}
+                                                onChange={(e) => setBatchSize(Number(e.target.value))}
+                                                min={1}
+                                                disabled={isSending}
+                                                className="h-8"
+                                            />
+                                            <span className="text-xs text-muted-foreground whitespace-nowrap">envios</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label className="text-xs">Duração da Pausa</Label>
+                                        <Input
+                                            type="number"
+                                            value={pauseDuration}
+                                            onChange={(e) => setPauseDuration(Number(e.target.value))}
+                                            min={1}
                                             disabled={isSending}
+                                            className="h-8"
                                         />
                                     </div>
 
-                                    {isScheduling && (
-                                        <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
-                                            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                                                <PopoverTrigger asChild>
-                                                    <Button
-                                                        variant={"outline"}
-                                                        className={`w-full justify-start text-left font-normal ${!scheduleDate && "text-muted-foreground"}`}
-                                                    >
-                                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {scheduleDate ? format(scheduleDate, "PPP 'às' HH:mm", { locale: ptBR }) : <span>Escolha a data</span>}
-                                                    </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-auto p-0" align="start">
-                                                    <Calendar
-                                                        mode="single"
-                                                        selected={scheduleDate}
-                                                        onSelect={setScheduleDate}
-                                                        initialFocus
-                                                        locale={ptBR}
-                                                    />
-                                                    <div className="p-3 border-t space-y-3">
-                                                        <div className="space-y-1">
-                                                            <Label className="text-xs">Horário</Label>
-                                                            <Input
-                                                                type="time"
-                                                                className="mt-1"
-                                                                value={scheduleDate ? format(scheduleDate, 'HH:mm') : ''}
-                                                                onChange={(e) => {
-                                                                    if (!scheduleDate) return;
-                                                                    const [hours, minutes] = e.target.value.split(':');
-                                                                    const newDate = new Date(scheduleDate);
-                                                                    newDate.setHours(parseInt(hours));
-                                                                    newDate.setMinutes(parseInt(minutes));
-                                                                    setScheduleDate(newDate);
-                                                                }}
-                                                            />
-                                                        </div>
-                                                        <Button size="sm" className="w-full" onClick={() => setIsCalendarOpen(false)}>
-                                                            Pronto
-                                                        </Button>
-                                                    </div>
-                                                </PopoverContent>
-                                            </Popover>
-                                        </div>
-                                    )}
+                                    <div className="space-y-2">
+                                        <Label className="text-xs">Unidade</Label>
+                                        <Select value={pauseUnit} onValueChange={(val: any) => setPauseUnit(val)} disabled={isSending}>
+                                            <SelectTrigger className="h-8">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="seconds">Segundos</SelectItem>
+                                                <SelectItem value="minutes">Minutos</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
+                                <p className="text-[10px] text-muted-foreground">
+                                    O sistema irá pausar o envio automaticamente após cada lote para evitar detecção de SPAM.
+                                </p>
                             </div>
 
 
@@ -543,10 +586,14 @@ export default function AdminComunicados() {
                                         )}
                                         <div>
                                             <p className="font-medium">
-                                                {isPaused ? "Envio Pausado" : (currentStudent ? `Enviando para ${currentStudent}...` : "Aguardando intervalo...")}
+                                                {isBatchPaused
+                                                    ? `Pausa de segurança ativa: Retomando em ${Math.floor(batchPauseTimer / 60).toString().padStart(2, '0')}:${(batchPauseTimer % 60).toString().padStart(2, '0')}`
+                                                    : isPaused ? "Envio Pausado" : (currentStudent ? `Enviando para ${currentStudent}...` : "Aguardando intervalo...")}
                                             </p>
                                             <p className="text-xs text-muted-foreground">
-                                                {isPaused ? "Clique em Retomar para continuar" : "Mantenha esta janela aberta"}
+                                                {isBatchPaused
+                                                    ? "Aguarde o tempo de segurança terminar para continuar"
+                                                    : isPaused ? "Clique em Retomar para continuar" : "Mantenha esta janela aberta"}
                                             </p>
                                         </div>
                                     </div>
@@ -572,7 +619,6 @@ export default function AdminComunicados() {
                                     ))}
                                 </div>
                             </div>
-
                         </CardContent>
                     </Card>
                 </div>
