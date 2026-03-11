@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { lessonsService } from "@/services/lessonsService";
 import { LessonDetailsDialog } from "@/components/portal/LessonDetailsDialog";
+import { useStudentData } from "@/hooks/useStudentData";
 
 export default function PortalCalendario() {
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -32,15 +33,8 @@ export default function PortalCalendario() {
     queryFn: lessonsService.getLessons
   });
 
-  const { data: student } = useQuery({
-    queryKey: ['student-profile'],
-    queryFn: async () => {
-      const { data: { user } } = await import("@/integrations/supabase/client").then(m => m.supabase.auth.getUser());
-      if (!user?.email) return null;
-      const { studentsService } = await import("@/services/studentsService");
-      return studentsService.getStudentByEmail(user.email);
-    }
-  });
+  // Fetch Student Profile with centralized hook
+  const { student } = useStudentData();
 
   const parseLocalDate = (dateStr: string) => {
     const [year, month, day] = dateStr.split('-').map(Number);
@@ -305,6 +299,7 @@ export default function PortalCalendario() {
       </motion.div>
       <LessonDetailsDialog
         lesson={selectedLesson}
+        student={student}
         open={isDetailsOpen}
         onOpenChange={setIsDetailsOpen}
       />

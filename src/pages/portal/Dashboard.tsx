@@ -594,6 +594,7 @@ export default function PortalDashboard() {
 
       <LessonDetailsDialog
         lesson={selectedLesson}
+        student={student}
         open={isDetailsOpen}
         onOpenChange={setIsDetailsOpen}
       />
