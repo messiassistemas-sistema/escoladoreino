@@ -26,6 +26,9 @@ import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { materialsService } from "@/services/materialsService";
 import { subjectsService } from "@/services/subjectsService";
+import { lessonsService } from "@/services/lessonsService";
+import { useStudentData } from "@/hooks/useStudentData";
+import { useAuth } from "@/contexts/AuthContext";
 
 const getIconByType = (tipo: string) => {
   switch (tipo) {
@@ -56,10 +59,17 @@ const getBadgeByType = (tipo: string) => {
 export default function PortalMateriais() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDisciplina, setSelectedDisciplina] = useState("Todas");
+  const { studentModality } = useStudentData();
+  const { isAdmin } = useAuth();
 
   const { data: materiais = [], isLoading: isLoadingMaterials } = useQuery({
     queryKey: ["materials"],
     queryFn: materialsService.getMaterials,
+  });
+
+  const { data: lessons = [], isLoading: isLoadingLessons } = useQuery({
+    queryKey: ["lessons-for-materials"],
+    queryFn: lessonsService.getLessons,
   });
 
   const { data: subjects = [] } = useQuery({
@@ -67,7 +77,29 @@ export default function PortalMateriais() {
     queryFn: subjectsService.getSubjects,
   });
 
-  const filteredMateriais = materiais.filter((material: any) => {
+  // Transformar aulas com gravação em "materiais"
+  const recordedLessonsAsMaterials = lessons
+    .filter((lesson: any) => {
+      const hasLink = !!lesson.recording_link;
+      const isVisible = isAdmin ||
+        studentModality === 'online' ||
+        (studentModality === 'presencial' && lesson.release_for_presencial);
+      return hasLink && isVisible;
+    })
+    .map((lesson: any) => ({
+      id: `lesson-${lesson.id}`,
+      title: `Gravação: ${lesson.topic || lesson.subject?.name || 'Aula'}`,
+      subject_name: lesson.subject?.name || "Geral",
+      author_name: lesson.teacher_name || "Escola do Reino",
+      file_url: lesson.recording_link,
+      type: "video",
+      created_at: lesson.date,
+      file_size: "Link Externo"
+    }));
+
+  const allMaterials = [...materiais, ...recordedLessonsAsMaterials];
+
+  const filteredMateriais = allMaterials.filter((material: any) => {
     const matchesSearch = material.title
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
@@ -177,7 +209,7 @@ export default function PortalMateriais() {
             <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Exibindo {filteredMateriais.length} materiais</p>
           </div>
 
-          {isLoadingMaterials ? (
+          {isLoadingMaterials || isLoadingLessons ? (
             <div className="flex items-center justify-center py-20">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>

@@ -44,7 +44,7 @@ export default function PortalDashboard() {
   };
 
   // Fetch Student Profile
-  const { student, displayName } = useStudentData();
+  const { student, studentModality, displayName } = useStudentData();
 
   // Fetch Data Dependent on Student ID
   const { data: grades = [] } = useQuery({
@@ -455,8 +455,9 @@ export default function PortalDashboard() {
                           </div>
                           <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
                             {(aula.recording_link && (
-                              student?.modality === 'online' ||
-                              (student?.modality === 'presencial' && aula.release_for_presencial)
+                              isAdmin ||
+                              studentModality === 'online' ||
+                              (studentModality === 'presencial' && aula.release_for_presencial)
                             )) && (
                                 <Button
                                   size="sm"
@@ -594,7 +595,6 @@ export default function PortalDashboard() {
 
       <LessonDetailsDialog
         lesson={selectedLesson}
-        student={student}
         open={isDetailsOpen}
         onOpenChange={setIsDetailsOpen}
       />

@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, MapPin, User, Video, BookOpen, AlignLeft } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useAuth } from "@/contexts/AuthContext";
+import { useStudentData } from "@/hooks/useStudentData";
 
 interface LessonDetailsDialogProps {
     lesson: any;
@@ -17,8 +19,16 @@ interface LessonDetailsDialogProps {
     onOpenChange: (open: boolean) => void;
 }
 
-export function LessonDetailsDialog({ lesson, student, open, onOpenChange }: LessonDetailsDialogProps) {
+export function LessonDetailsDialog({ lesson, open, onOpenChange }: LessonDetailsDialogProps) {
+    const { isAdmin } = useAuth();
+    const { studentModality } = useStudentData();
     if (!lesson) return null;
+
+    const recordingVisible = lesson.recording_link && (
+        isAdmin ||
+        studentModality === 'online' ||
+        (studentModality === 'presencial' && lesson.release_for_presencial)
+    );
 
     const parseLocalDate = (dateStr: string) => {
         const [year, month, day] = dateStr.split('-').map(Number);
@@ -101,30 +111,27 @@ export function LessonDetailsDialog({ lesson, student, open, onOpenChange }: Les
                         )}
 
                         {/* Link da Gravação */}
-                        {(lesson.recording_link && (
-                            student?.modality === 'online' ||
-                            (student?.modality === 'presencial' && lesson.release_for_presencial)
-                        )) && (
-                                <div className="space-y-3">
-                                    <div className="flex items-center gap-2">
-                                        <Video className="h-5 w-5 text-primary" />
-                                        <h4 className="font-display text-lg font-bold">Aula Gravada</h4>
-                                    </div>
-                                    <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 flex flex-col sm:flex-row items-center justify-between gap-4">
-                                        <div className="space-y-1">
-                                            <p className="text-sm font-bold text-primary">A gravação já está disponível!</p>
-                                            <p className="text-xs text-muted-foreground font-medium">Assista ao conteúdo completo desta aula.</p>
-                                        </div>
-                                        <Button
-                                            className="w-full sm:w-auto font-bold shadow-lg shadow-primary/10"
-                                            onClick={() => window.open(lesson.recording_link, '_blank')}
-                                        >
-                                            <Video className="h-4 w-4 mr-2" />
-                                            Assistir Agora
-                                        </Button>
-                                    </div>
+                        {recordingVisible && (
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                    <Video className="h-5 w-5 text-primary" />
+                                    <h4 className="font-display text-lg font-bold">Aula Gravada</h4>
                                 </div>
-                            )}
+                                <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                    <div className="space-y-1">
+                                        <p className="text-sm font-bold text-primary">A gravação já está disponível!</p>
+                                        <p className="text-xs text-muted-foreground font-medium">Assista ao conteúdo completo desta aula.</p>
+                                    </div>
+                                    <Button
+                                        className="w-full sm:w-auto font-bold shadow-lg shadow-primary/10"
+                                        onClick={() => window.open(lesson.recording_link, '_blank')}
+                                    >
+                                        <Video className="h-4 w-4 mr-2" />
+                                        Assistir Agora
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
 
                         {!lesson.description && !lesson.recording_link && (
                             <div className="flex flex-col items-center justify-center py-8 text-center border-2 border-dashed border-muted rounded-xl bg-muted/20">

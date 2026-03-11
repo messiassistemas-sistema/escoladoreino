@@ -19,9 +19,11 @@ export function useStudentData() {
     const displayRegistration = student?.registration_number || user?.user_metadata?.matricula || "...";
     // Prioriza turma do banco se existir, senão metadados, senão padrão
     const displayClass = student?.class_name || user?.user_metadata?.turma || "Teologia Sistemática";
+    const studentModality = (student?.modality || user?.user_metadata?.modality || "").trim().toLowerCase();
 
     return {
         student,
+        studentModality,
         isLoading: isLoadingStudent,
         refetchStudent: refetch,
         displayName,

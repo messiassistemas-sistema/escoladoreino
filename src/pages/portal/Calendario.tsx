@@ -18,12 +18,14 @@ import { ptBR } from "date-fns/locale";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { lessonsService } from "@/services/lessonsService";
 import { LessonDetailsDialog } from "@/components/portal/LessonDetailsDialog";
 import { useStudentData } from "@/hooks/useStudentData";
 
 export default function PortalCalendario() {
+  const { isAdmin } = useAuth();
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [selectedLesson, setSelectedLesson] = useState<any>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -34,7 +36,7 @@ export default function PortalCalendario() {
   });
 
   // Fetch Student Profile with centralized hook
-  const { student } = useStudentData();
+  const { student, studentModality } = useStudentData();
 
   const parseLocalDate = (dateStr: string) => {
     const [year, month, day] = dateStr.split('-').map(Number);
@@ -202,8 +204,9 @@ export default function PortalCalendario() {
                               {aula.mode === 'online' ? 'Acessar Live' : 'Ver Local'}
                             </Button>
                             {(aula.recording_link && (
-                              student?.modality === 'online' ||
-                              (student?.modality === 'presencial' && aula.release_for_presencial)
+                              isAdmin ||
+                              studentModality === 'online' ||
+                              (studentModality === 'presencial' && aula.release_for_presencial)
                             )) && (
                                 <Button
                                   className="hidden sm:flex rounded-xl font-bold bg-muted text-foreground hover:bg-primary hover:text-white transition-all ml-2"
@@ -299,7 +302,6 @@ export default function PortalCalendario() {
       </motion.div>
       <LessonDetailsDialog
         lesson={selectedLesson}
-        student={student}
         open={isDetailsOpen}
         onOpenChange={setIsDetailsOpen}
       />
